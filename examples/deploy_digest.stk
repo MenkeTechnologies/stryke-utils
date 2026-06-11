@@ -1,0 +1,53 @@
+#!/usr/bin/env stryke
+# examples/deploy_digest.stk — summarize a batch of deploy-log lines.
+#
+# A realistic end-to-end pipeline that leans on the package's later
+# additions rather than the builtins: ISO-8601 parsing (Utils::Time),
+# quote stripping + fills + ellipsize (Utils::String), error-rate and
+# dispersion stats (Utils::Num), slowest-N ranking (Utils::List), and
+# an output path derived from the input (Utils::Path). The same pipeline
+# is pinned in t/test_utils.stk under "Cross-module integration".
+#
+# Run:   s examples/deploy_digest.stk
+
+use Utils
+
+val $log_path = "logs/deploy.log"
+my @log = (
+    '2023-11-14T22:13:20Z INFO  deploy "svc-alpha" 1240',
+    '2023-11-14T22:13:25Z ERROR deploy "svc-beta-long-name" 890',
+    '2023-11-14T22:13:30Z INFO  deploy "svc-c" 2100',
+    '2023-11-14T22:13:40Z ERROR deploy "svc-alpha" 1310',
+)
+
+# Parse each line into a record. split-with-limit keeps the message tail
+# intact; strip_quotes pulls the service name out of its quotes.
+my @rec = map {
+    my @f = split /\s+/, $_, 5
+    +{
+        epoch => Utils::Time::parse_iso8601($f[0]),
+        level => $f[1],
+        svc   => Utils::String::strip_quotes($f[3]),
+        ms    => $f[4] + 0,
+    }
+} @log
+
+my @durs   = map { $_->{ms} } @rec
+val $errs  = scalar(grep { $_->{level} eq "ERROR" } @rec)
+val $span  = $rec[-1]{epoch} - $rec[0]{epoch}
+val $slow  = Utils::List::top_n(\@rec, 3, fn ($r) { $r->{ms} })
+
+p Utils::String::repeat_to("=", 44)
+p "deploy digest  (" . Utils::Time::format_clock($rec[0]{epoch}) . " UTC, " . $span . "s window)"
+p Utils::String::repeat_to("=", 44)
+p "records   : " . scalar(@rec)
+p "error rate: " . sprintf("%.1f%%", Utils::Num::pct_of($errs, scalar(@rec)))
+p "mean ±dev : " . sprintf("%.0fms", Utils::Num::mean_abs_dev(\@durs))
+p ""
+p "slowest:"
+for val $r (@$slow) {
+    val $name = pad_right(Utils::String::ellipsize($r->{svc}, 16), 16)
+    p sprintf("  %s  %5dms", $name, $r->{ms})
+}
+p ""
+p "report -> " . Utils::Path::with_name($log_path, "digest.txt")

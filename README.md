@@ -236,6 +236,7 @@ stryke-utils/
     discover.stk               # one call per sublib
     word_frequency.stk         # builtin-powered text pipeline
     config_merge.stk           # layered config via deep_merge_all + deep_get
+    deploy_digest.stk          # cross-module pipeline (Time + String + Num + List + Path)
 ```
 
 ## [0xFF] License

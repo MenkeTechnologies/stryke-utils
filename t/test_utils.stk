@@ -380,4 +380,44 @@ assert_eq Utils::String::repeat_to("xyz", 3), "xyz",   "repeat_to exact"
 assert_eq Utils::String::repeat_to("ab", 0),  "",      "repeat_to zero width"
 assert_eq Utils::String::repeat_to("", 5),    "",      "repeat_to empty unit"
 
+# ── Cross-module integration: a deploy-log digest ────────────────────
+# Exercises Time + String + Num + List + Path together on one realistic
+# pipeline — the interactions unit tests don't cover.
+my @log = (
+    '2023-11-14T22:13:20Z INFO  deploy "svc-alpha" 1240',
+    '2023-11-14T22:13:25Z ERROR deploy "svc-beta-long-name" 890',
+    '2023-11-14T22:13:30Z INFO  deploy "svc-c" 2100',
+    '2023-11-14T22:13:40Z ERROR deploy "svc-alpha" 1310',
+)
+my @rec = map {
+    my @f = split /\s+/, $_, 5
+    +{
+        epoch => Utils::Time::parse_iso8601($f[0]),
+        level => $f[1],
+        svc   => Utils::String::strip_quotes($f[3]),
+        ms    => $f[4] + 0,
+    }
+} @log
+
+assert_eq scalar(@rec),         4,            "integration: parsed all records"
+assert_eq $rec[0]{epoch},       1700000000,   "integration: Time::parse_iso8601 in pipeline"
+assert_eq $rec[1]{svc},         "svc-beta-long-name", "integration: String::strip_quotes in pipeline"
+assert_eq $rec[3]{epoch} - $rec[0]{epoch}, 20, "integration: epoch span (parse round-trip consistent)"
+
+my @durs = map { $_->{ms} } @rec
+assert_eq Utils::Num::pct_of(scalar(grep { $_->{level} eq "ERROR" } @rec), scalar(@rec)), 50, "integration: Num::pct_of error rate"
+assert_ok Utils::Num::mean_abs_dev(\@durs) > 0, "integration: Num::mean_abs_dev over durations"
+
+my $slowest = Utils::List::top_n(\@rec, 2, fn ($r) { $r->{ms} })
+assert_eq $slowest->[0]{svc}, "svc-c",     "integration: List::top_n by ms picks slowest"
+assert_eq scalar(@$slowest),  2,           "integration: List::top_n honors count"
+
+# headline line built from String fills + ellipsize
+my $rule = Utils::String::repeat_to("=", 20)
+assert_eq length($rule), 20,               "integration: String::repeat_to rule width"
+assert_eq Utils::String::ellipsize($rec[1]{svc}, 10), "svc-beta-…", "integration: String::ellipsize long name"
+
+# output path derived from an input path
+assert_eq Utils::Path::with_name("logs/deploy.log", "digest.txt"), "logs/digest.txt", "integration: Path::with_name for report file"
+
 test_run
