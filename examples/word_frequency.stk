@@ -1,0 +1,36 @@
+#!/usr/bin/env stryke
+# examples/word_frequency.stk — count word frequencies in a string and
+# print the top N, demonstrating a typical Utils::String + Utils::List +
+# Utils::Hash + Utils::Num pipeline.
+#
+# Run:   s examples/word_frequency.stk
+
+use Utils
+
+val $text = q{
+    The quick brown fox jumps over the lazy dog. The dog was not amused.
+    The fox kept jumping. The lazy dog kept lazing. Such is life with
+    foxes and dogs and lazy afternoons.
+}
+
+# Tokenize → lowercase → drop punctuation → drop empties.
+val @words = grep { length }
+             map  { Utils::String::trim(lc $_) =~ s/[^a-z']//gr }
+             split /\s+/, $text
+
+# Count occurrences, then sort by count desc.
+val $counts = Utils::List::count_by(\@words, sub ($w) { $w })
+val @pairs  = sort { $counts->{$b} <=> $counts->{$a} || $a cmp $b }
+              keys %$counts
+
+p "=== word frequency ==="
+p "total tokens : " . Utils::Num::format_number(scalar(@words))
+p "unique words : " . Utils::Num::format_number(scalar(@pairs))
+p ""
+p "top 5:"
+for val $w (@pairs[0..4]) {
+    val $n   = $counts->{$w}
+    val $pct = Utils::Num::format_percent($n / scalar(@words), 1)
+    p sprintf("  %s  %3d  %s",
+              Utils::String::pad_right($w, 12), $n, $pct)
+}

@@ -1,0 +1,126 @@
+## lib/Num.stk — `use Utils::Num`
+##
+## Numeric composites. `abs`, `int`, `sqrt`, `sprintf`, the arithmetic
+## operators, and `..` ranges are stryke builtins — not re-exported.
+
+package Utils::Num
+
+# ── clamp / range ────────────────────────────────────────────────────
+
+## Force $x into [$lo, $hi]. If $lo > $hi, swaps them first.
+fn Utils::Num::clamp ($x, $lo, $hi) {
+    if ($lo > $hi) { val $t = $lo; $lo = $hi; $hi = $t }
+    return $lo if $x < $lo
+    return $hi if $x > $hi
+    $x
+}
+
+## True if $lo <= $x <= $hi.
+fn Utils::Num::between ($x, $lo, $hi) {
+    $x >= $lo && $x <= $hi ? 1 : 0
+}
+
+## Linear interpolation. $t=0 → $a, $t=1 → $b. No clamp on $t.
+fn Utils::Num::lerp ($a, $b, $t) {
+    $a + ($b - $a) * $t
+}
+
+# ── rounding ─────────────────────────────────────────────────────────
+
+## Round $x to $places decimal places (default 0). Banker-style not
+## guaranteed — uses sprintf's "%.*f" which is round-half-to-even on
+## most libcs but is good enough for typical UI work.
+fn Utils::Num::round_to ($x, $places = 0) {
+    sprintf("%.*f", $places, $x) + 0
+}
+
+## Round $x to the nearest multiple of $step. round_to_multiple(13, 5) → 15.
+fn Utils::Num::round_to_multiple ($x, $step) {
+    die "Utils::Num::round_to_multiple: step != 0 required" if $step == 0
+    val $q = $x / $step
+    val $r = $q >= 0 ? int($q + 0.5) : -int(-$q + 0.5)
+    $r * $step
+}
+
+# ── formatting ───────────────────────────────────────────────────────
+
+## "1234567.89" → "1,234,567.89". Adds thousands separators to the
+## integer part; decimal part untouched.
+fn Utils::Num::format_number ($x, $sep = ",") {
+    val $s = "$x"
+    val ($neg, $int, $dot, $frac) = $s =~ /^(-?)(\d+)(\.(\d+))?$/
+    return $s unless defined $int
+    var $rev = scalar(reverse $int)
+    $rev =~ s/(\d{3})(?=\d)/$1$sep/g
+    val $grouped = scalar(reverse $rev)
+    $neg . $grouped . (defined $dot ? $dot : "")
+}
+
+## Humanize a byte count. format_bytes(1536) → "1.5 KB".
+## Uses 1024 base by default; pass `si => 1` for 1000 base.
+fn Utils::Num::format_bytes ($bytes, %opts) {
+    val $base  = $opts{si} ? 1000 : 1024
+    val @units = $opts{si}
+        ? qw(B KB MB GB TB PB EB)
+        : qw(B KiB MiB GiB TiB PiB EiB)
+    var $n = $bytes
+    var $i = 0
+    while ($n >= $base && $i < $#units) {
+        $n /= $base
+        $i++
+    }
+    return sprintf("%d %s",   $n, $units[$i]) if $i == 0
+    return sprintf("%.1f %s", $n, $units[$i])
+}
+
+## Percent string. format_percent(0.5238) → "52.4%".
+fn Utils::Num::format_percent ($x, $places = 1) {
+    sprintf("%.*f%%", $places, $x * 100)
+}
+
+## Ordinal suffix. ordinal(21) → "21st". Handles teens correctly.
+fn Utils::Num::ordinal ($n) {
+    val $abs = abs(int($n))
+    val $mod100 = $abs % 100
+    return "${n}th" if $mod100 >= 11 && $mod100 <= 13
+    val $mod10 = $abs % 10
+    return "${n}st" if $mod10 == 1
+    return "${n}nd" if $mod10 == 2
+    return "${n}rd" if $mod10 == 3
+    "${n}th"
+}
+
+# ── sign / parity ────────────────────────────────────────────────────
+
+## -1, 0, or 1.
+fn Utils::Num::sign ($x) {
+    $x < 0 ? -1 : $x > 0 ? 1 : 0
+}
+
+## True if integer $n is even.
+fn Utils::Num::is_even ($n) {
+    int($n) % 2 == 0 ? 1 : 0
+}
+
+## True if integer $n is odd.
+fn Utils::Num::is_odd ($n) {
+    int($n) % 2 != 0 ? 1 : 0
+}
+
+## Greatest common divisor (Euclidean). Always non-negative.
+fn Utils::Num::gcd ($a, $b) {
+    $a = abs(int($a))
+    $b = abs(int($b))
+    while ($b != 0) {
+        val $t = $b
+        $b = $a % $b
+        $a = $t
+    }
+    $a
+}
+
+## Least common multiple.
+fn Utils::Num::lcm ($a, $b) {
+    return 0 if $a == 0 || $b == 0
+    abs($a * $b) / Utils::Num::gcd($a, $b)
+}

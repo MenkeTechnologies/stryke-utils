@@ -1,0 +1,180 @@
+## lib/Path.stk — `use Utils::Path`
+##
+## Filesystem-path string composites. We don't wrap `mkdir`, `unlink`,
+## `rmdir`, `opendir`, `readdir`, `-e`, `-d`, `-f`, `-s` — those are
+## stryke builtins. This module only manipulates the path *string*.
+
+package Utils::Path
+
+# ── extension ────────────────────────────────────────────────────────
+
+## File extension WITHOUT the leading dot, or "" if none. Multi-dot
+## files like "x.tar.gz" return only the last segment ("gz"). For the
+## full compound, use `compound_ext`.
+fn Utils::Path::ext ($path) {
+    val $base = Utils::Path::_basename($path)
+    return "" unless $base =~ /\.([^.]+)$/
+    $1
+}
+
+## Compound extension like "tar.gz" for "archive.tar.gz". Returns "" if
+## no dot, single segment ("gz") otherwise. The rule: include every
+## suffix where each segment is purely alphanumeric and <= 4 chars.
+fn Utils::Path::compound_ext ($path) {
+    val $base = Utils::Path::_basename($path)
+    val @parts = split /\./, $base
+    return "" if @parts <= 1
+    var @suffix
+    for var $i ($#parts .. 1) {
+        val $p = $parts[$i]
+        last unless $p =~ /^[a-zA-Z0-9]+$/ && length($p) <= 4
+        unshift @suffix, $p
+        last if @suffix == 1  # only walk back further for compound cases
+    }
+    # If we have at least one tiny suffix and the segment before it is
+    # also tiny+alpha, treat them as compound (tar.gz, tar.bz2, …).
+    if (@suffix == 1 && @parts >= 3) {
+        val $prev = $parts[-2]
+        if ($prev =~ /^[a-zA-Z0-9]+$/ && length($prev) <= 4) {
+            unshift @suffix, $prev
+        }
+    }
+    join ".", @suffix
+}
+
+## Drop the (single-segment) extension. "x/y.parquet" → "x/y".
+## "archive.tar.gz" → "archive.tar" — pair with `compound_ext` if you
+## need to lose both.
+fn Utils::Path::without_ext ($path) {
+    return $path unless $path =~ /^(.*)\.[^.\/]+$/
+    $1
+}
+
+## Replace the extension. set_ext("a/b.csv", "parquet") → "a/b.parquet".
+## A leading "." in $new is tolerated. Adds the extension if absent.
+fn Utils::Path::set_ext ($path, $new) {
+    val $clean = $new =~ s/^\.+//r
+    val $stem  = Utils::Path::without_ext($path)
+    $clean eq "" ? $stem : "$stem.$clean"
+}
+
+## Split into (stem, ext). "/a/b.csv" → ("/a/b", "csv"). Ext without dot.
+fn Utils::Path::splitext ($path) {
+    val $e = Utils::Path::ext($path)
+    val $stem = $e eq "" ? $path : Utils::Path::without_ext($path)
+    ($stem, $e)
+}
+
+# ── basename / dirname ───────────────────────────────────────────────
+
+## Internal: last path segment. Trailing slashes stripped.
+fn Utils::Path::_basename ($path) {
+    val $p = $path =~ s{/+$}{}r
+    return $p unless $p =~ m{/}
+    $p =~ s{^.*/}{}r
+}
+
+## Public basename — strips trailing slashes, then the last segment.
+fn Utils::Path::basename ($path) {
+    Utils::Path::_basename($path)
+}
+
+## Directory portion. "a/b/c.txt" → "a/b"; "c.txt" → "."; "/" → "/".
+fn Utils::Path::dirname ($path) {
+    return "/" if $path eq "/"
+    val $p = $path =~ s{/+$}{}r
+    return "." unless $p =~ m{/}
+    val $d = $p =~ s{/[^/]+$}{}r
+    $d eq "" ? "/" : $d
+}
+
+# ── join ─────────────────────────────────────────────────────────────
+
+## Join path segments. Strips trailing slashes from each piece, drops
+## empty segments, preserves a leading "/" if the first segment had one.
+fn Utils::Path::join (@parts) {
+    var @clean
+    for val $p (@parts) {
+        next unless defined $p
+        val $t = $p =~ s{/+$}{}r
+        next if $t eq ""
+        push @clean, $t
+    }
+    return "" unless @clean
+    val $head = shift @clean
+    val @tail = map { (s{^/+}{}r) } @clean
+    @tail ? "$head/" . join("/", @tail) : $head
+}
+
+# ── normalize / absolute ─────────────────────────────────────────────
+
+## Resolve `.` and `..` segments lexically (no filesystem touch).
+## Preserves a leading "/". A path that walks above the root collapses
+## to "/" (or "." for relative).
+fn Utils::Path::normalize ($path) {
+    val $abs = substr($path, 0, 1) eq "/"
+    val @segs = grep { length && $_ ne "." } split m{/+}, $path
+    var @out
+    for val $s (@segs) {
+        if ($s eq "..") {
+            if (@out && $out[-1] ne "..") {
+                pop @out
+            } elsif (!$abs) {
+                push @out, ".."
+            }
+        } else {
+            push @out, $s
+        }
+    }
+    val $body = join "/", @out
+    if ($abs) {
+        return "/" if $body eq ""
+        return "/$body"
+    }
+    $body eq "" ? "." : $body
+}
+
+## True if $path starts with "/".
+fn Utils::Path::is_absolute ($path) {
+    substr($path, 0, 1) eq "/" ? 1 : 0
+}
+
+## True if $path has no `/` at all.
+fn Utils::Path::is_bare ($path) {
+    $path !~ m{/} ? 1 : 0
+}
+
+# ── relative / common ────────────────────────────────────────────────
+
+## Path of $target relative to $from. Both args are normalized first.
+## Returns "." if they resolve to the same path.
+fn Utils::Path::relative ($target, $from) {
+    val $t = Utils::Path::normalize($target)
+    val $f = Utils::Path::normalize($from)
+    return "." if $t eq $f
+    val @ts = split m{/}, $t
+    val @fs = split m{/}, $f
+    var $i = 0
+    while ($i < @ts && $i < @fs && $ts[$i] eq $fs[$i]) { $i++ }
+    val $ups = scalar(@fs) - $i
+    val @rest = @ts[$i..$#ts]
+    val $body = join "/", (("..") x $ups), @rest
+    $body eq "" ? "." : $body
+}
+
+## Longest path prefix shared by all @paths, ending at a `/` boundary.
+fn Utils::Path::common_prefix (@paths) {
+    return "" unless @paths
+    return $paths[0] if @paths == 1
+    val @first = split m{/}, $paths[0]
+    var @common = @first
+    for val $p (@paths[1..$#paths]) {
+        val @segs = split m{/}, $p
+        var $i = 0
+        while ($i < @common && $i < @segs && $common[$i] eq $segs[$i]) {
+            $i++
+        }
+        @common = @common[0..$i - 1]
+    }
+    join "/", @common
+}

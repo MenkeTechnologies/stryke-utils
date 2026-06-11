@@ -1,0 +1,273 @@
+## t/test_utils.stk — assertion tests for the stryke-utils package.
+##
+## Pure stryke. No cdylib to load, no helper binary to build — every
+## sublibrary is just .stk so `use Utils` resolves the whole surface in
+## one pass.
+
+use Utils
+
+# ── version ──────────────────────────────────────────────────────────
+assert_match qr/^\d+\.\d+\.\d+$/, Utils::version(), "Utils::version is semver"
+assert_eq scalar(Utils::modules()), 6, "Utils::modules lists six sublibs"
+
+# ── Utils::String ────────────────────────────────────────────────────
+assert_eq Utils::String::trim("   hi   "),           "hi",     "trim strips both sides"
+assert_eq Utils::String::ltrim("   hi   "),          "hi   ",  "ltrim left only"
+assert_eq Utils::String::rtrim("   hi   "),          "   hi",  "rtrim right only"
+
+assert_eq Utils::String::snake_case("HelloWorld"),   "hello_world", "snake case-boundary"
+assert_eq Utils::String::snake_case("Hello World"),  "hello_world", "snake whitespace"
+assert_eq Utils::String::kebab_case("HelloWorld"),   "hello-world", "kebab case-boundary"
+assert_eq Utils::String::camel_case("hello world"),  "helloWorld",  "camel from spaces"
+assert_eq Utils::String::pascal_case("hello world"), "HelloWorld",  "pascal from spaces"
+assert_eq Utils::String::title_case("hello world"),  "Hello World", "title from spaces"
+
+assert_eq Utils::String::slugify("Hello, World! 2026"), "hello-world-2026", "slugify"
+assert_eq Utils::String::slugify("   --x--   "),        "x",                "slugify trims"
+
+assert_eq Utils::String::pad_left("7", 3, "0"),  "007", "pad_left zero-pad"
+assert_eq Utils::String::pad_right("7", 3, "."), "7..", "pad_right dot-pad"
+assert_eq Utils::String::pad_center("hi", 6, "-"), "--hi--", "pad_center balanced"
+assert_eq Utils::String::pad_center("hi", 5, "-"), "--hi-", "pad_center odd → right-heavy"
+
+assert_eq Utils::String::truncate("abcdef", 4, "..."), "a...", "truncate keeps room for ellipsis"
+assert_eq Utils::String::truncate("abc", 10),          "abc",   "truncate noop"
+
+assert_eq Utils::String::strip_ansi("\e[31mred\e[0m"), "red", "strip_ansi"
+assert_eq Utils::String::visible_width("\e[31mhi\e[0m"), 2,    "visible_width"
+
+assert_ok  Utils::String::starts_with("file.csv", "file"),     "starts_with hit"
+assert_ok  Utils::String::ends_with("file.csv",   ".csv"),     "ends_with hit"
+assert_ok  Utils::String::contains("abcdef",       "cd"),      "contains hit"
+assert_eq  Utils::String::count_occurrences("ababab", "ab"), 3, "count_occurrences"
+
+assert_eq Utils::String::levenshtein("kitten", "sitting"), 3,  "levenshtein classic"
+assert_eq Utils::String::levenshtein("", "abc"), 3,            "levenshtein empty A"
+assert_eq Utils::String::levenshtein("abc", ""), 3,            "levenshtein empty B"
+
+assert_eq Utils::String::word_wrap("the quick brown fox", 10),
+          "the quick\nbrown fox",                              "word_wrap basic"
+assert_eq Utils::String::reverse_chars("abc"), "cba",          "reverse_chars"
+
+# ── Utils::List ──────────────────────────────────────────────────────
+val $ch = Utils::List::chunk([1,2,3,4,5,6,7], 3)
+assert_eq scalar(@$ch), 3,                   "chunk count"
+assert_eq scalar(@{ $ch->[-1] }), 1,         "chunk tail is shorter"
+
+val $uq = Utils::List::uniq([1,2,2,3,1,4])
+assert_eq join(",", @$uq), "1,2,3,4",        "uniq stable order"
+
+val $ub = Utils::List::uniq_by([{id=>1},{id=>2},{id=>1}], sub ($x) { $x->{id} })
+assert_eq scalar(@$ub), 2,                   "uniq_by dedup count"
+
+val $gb = Utils::List::group_by([1,2,3,4,5], sub ($x) { $x % 2 == 0 ? "even" : "odd" })
+assert_eq scalar(@{ $gb->{even} }), 2,       "group_by even count"
+assert_eq scalar(@{ $gb->{odd} }),  3,       "group_by odd count"
+
+val $cb = Utils::List::count_by(["a","b","a","c","b","a"], sub ($x) { $x })
+assert_eq $cb->{a}, 3,                       "count_by"
+
+val $ix = Utils::List::index_by([{id=>"x", n=>1},{id=>"y", n=>2}], sub ($r) { $r->{id} })
+assert_eq $ix->{x}{n}, 1,                    "index_by"
+
+val $pt = Utils::List::partition([1,2,3,4,5], sub ($x) { $x > 2 })
+assert_eq scalar(@{ $pt->[0] }), 3,          "partition yes"
+assert_eq scalar(@{ $pt->[1] }), 2,          "partition no"
+
+assert_eq join(",", @{ Utils::List::compact([1, undef, "", 2, 0, "0"]) }),
+          "1,2,0,0",                         "compact keeps 0/'0'"
+
+assert_eq join(",", @{ Utils::List::pluck([{x=>1},{x=>2},{x=>3}], "x") }),
+          "1,2,3",                           "pluck"
+
+val $fl = Utils::List::flatten([1,[2,[3,[4]]],5])
+assert_eq join(",", @$fl), "1,2,3,4,5",      "flatten deep"
+
+assert_eq Utils::List::sum([1,2,3,4]),       10,   "sum"
+assert_eq Utils::List::mean([1,2,3,4]),      2.5,  "mean"
+assert_eq Utils::List::median([5,2,1,4,3]),  3,    "median odd"
+assert_eq Utils::List::median([1,2,3,4]),    2.5,  "median even"
+
+val $mb = Utils::List::max_by([{n=>1},{n=>9},{n=>3}], sub ($x) { $x->{n} })
+assert_eq $mb->{n}, 9,                       "max_by"
+
+val $sb = Utils::List::sort_by([{n=>3},{n=>1},{n=>2}], sub ($x) { $x->{n} })
+assert_eq $sb->[0]{n}, 1,                    "sort_by head"
+assert_eq $sb->[-1]{n}, 3,                   "sort_by tail"
+
+val $zp = Utils::List::zip([1,2,3], ["a","b"])
+assert_eq scalar(@$zp), 2,                   "zip stops at shortest"
+assert_eq $zp->[0][1], "a",                  "zip element"
+
+assert_eq join(",", @{ Utils::List::difference([1,2,3,4], [2,4]) }),
+          "1,3",                             "difference"
+assert_eq join(",", @{ Utils::List::intersection([1,2,3,4], [2,4,5]) }),
+          "2,4",                             "intersection"
+assert_eq join(",", @{ Utils::List::union([1,2,3], [3,4,5]) }),
+          "1,2,3,4,5",                       "union dedup"
+
+assert_eq join(",", @{ Utils::List::range(0, 10, 2) }), "0,2,4,6,8", "range fwd"
+assert_eq join(",", @{ Utils::List::range(5, 0, -1) }), "5,4,3,2,1", "range back"
+
+val $wn = Utils::List::windows([1,2,3,4], 2)
+assert_eq scalar(@$wn), 3,                   "windows count"
+assert_eq $wn->[1][1], 3,                    "windows element"
+
+assert_eq join(",", @{ Utils::List::take([1,2,3,4], 2) }), "1,2", "take"
+assert_eq join(",", @{ Utils::List::drop([1,2,3,4], 2) }), "3,4", "drop"
+
+# ── Utils::Hash ──────────────────────────────────────────────────────
+val $dm = Utils::Hash::deep_merge({a=>{x=>1, y=>2}, b=>1},
+                                  {a=>{y=>20, z=>30}, c=>3})
+assert_eq $dm->{a}{x}, 1,                    "deep_merge keeps unique"
+assert_eq $dm->{a}{y}, 20,                   "deep_merge overrides"
+assert_eq $dm->{a}{z}, 30,                   "deep_merge adds new key"
+assert_eq $dm->{c},    3,                    "deep_merge top-level new"
+
+val $pk = Utils::Hash::pick({a=>1, b=>2, c=>3}, "a", "c", "missing")
+assert_eq scalar(keys %$pk), 2,              "pick skips missing"
+assert_ok exists $pk->{a},                   "pick a"
+assert_ok exists $pk->{c},                   "pick c"
+
+val $om = Utils::Hash::omit({a=>1, b=>2, c=>3}, "b")
+assert_eq scalar(keys %$om), 2,              "omit count"
+assert_ok !exists $om->{b},                  "omit removes"
+
+val $iv = Utils::Hash::invert({a=>1, b=>2})
+assert_eq $iv->{1}, "a",                     "invert lookup"
+
+val $deep = { a => { b => { c => 42 } } }
+assert_eq Utils::Hash::deep_get($deep, "a.b.c"), 42,   "deep_get hit"
+assert_ok !defined Utils::Hash::deep_get($deep, "a.x"), "deep_get miss"
+
+Utils::Hash::deep_set($deep, "a.b.d", 99)
+assert_eq $deep->{a}{b}{d}, 99,              "deep_set creates leaf"
+Utils::Hash::deep_set($deep, "x.y.z", "new")
+assert_eq $deep->{x}{y}{z}, "new",           "deep_set autovivifies"
+
+assert_ok Utils::Hash::deep_has($deep, "a.b.c"),  "deep_has hit"
+assert_ok !Utils::Hash::deep_has($deep, "a.b.q"), "deep_has miss"
+
+val $pairs = Utils::Hash::to_pairs({b=>2, a=>1})
+assert_eq $pairs->[0][0], "a",               "to_pairs sorted"
+val $rt = Utils::Hash::from_pairs([["a",1],["b",2]])
+assert_eq $rt->{b}, 2,                       "from_pairs"
+
+val $mk = Utils::Hash::map_keys({a=>1, b=>2}, sub ($k, $v) { uc $k })
+assert_ok exists $mk->{A},                   "map_keys upper"
+val $mv = Utils::Hash::map_values({a=>1, b=>2}, sub ($v, $k) { $v * 10 })
+assert_eq $mv->{a}, 10,                      "map_values x10"
+val $fl2 = Utils::Hash::filter({a=>1, b=>2, c=>3}, sub ($k, $v) { $v >= 2 })
+assert_eq scalar(keys %$fl2), 2,             "filter >=2"
+
+assert_ok Utils::Hash::is_empty({}),         "is_empty empty"
+assert_ok !Utils::Hash::is_empty({a=>1}),    "is_empty not"
+
+# ── Utils::Num ───────────────────────────────────────────────────────
+assert_eq Utils::Num::clamp(15, 0, 10),       10,  "clamp high"
+assert_eq Utils::Num::clamp(-3, 0, 10),       0,   "clamp low"
+assert_eq Utils::Num::clamp(5,  0, 10),       5,   "clamp inside"
+assert_ok Utils::Num::between(5, 0, 10),           "between inside"
+assert_ok !Utils::Num::between(15, 0, 10),         "between outside"
+
+assert_eq Utils::Num::lerp(0, 100, 0.25),     25,  "lerp 0.25"
+
+assert_eq Utils::Num::round_to(3.14159, 2),   3.14, "round_to 2dp"
+assert_eq Utils::Num::round_to_multiple(13, 5), 15, "round_to_multiple up"
+assert_eq Utils::Num::round_to_multiple(12, 5), 10, "round_to_multiple down"
+
+assert_eq Utils::Num::format_number(1234567),         "1,234,567",   "format_number int"
+assert_eq Utils::Num::format_number("1234567.89"),    "1,234,567.89", "format_number decimal"
+
+assert_eq Utils::Num::format_bytes(0),                "0 B",     "format_bytes zero"
+assert_eq Utils::Num::format_bytes(1024),             "1.0 KiB", "format_bytes 1K"
+assert_eq Utils::Num::format_bytes(1572864),          "1.5 MiB", "format_bytes 1.5M"
+assert_eq Utils::Num::format_bytes(1000, si => 1),    "1.0 KB",  "format_bytes SI"
+
+assert_eq Utils::Num::format_percent(0.524, 1),       "52.4%",   "format_percent"
+assert_eq Utils::Num::ordinal(1),  "1st",  "ordinal 1"
+assert_eq Utils::Num::ordinal(2),  "2nd",  "ordinal 2"
+assert_eq Utils::Num::ordinal(3),  "3rd",  "ordinal 3"
+assert_eq Utils::Num::ordinal(11), "11th", "ordinal 11 (teen)"
+assert_eq Utils::Num::ordinal(21), "21st", "ordinal 21"
+
+assert_eq Utils::Num::sign(-7), -1, "sign neg"
+assert_eq Utils::Num::sign(0),   0, "sign zero"
+assert_eq Utils::Num::sign(7),   1, "sign pos"
+
+assert_ok  Utils::Num::is_even(4),     "is_even 4"
+assert_ok !Utils::Num::is_even(5),     "is_even 5 → no"
+assert_ok  Utils::Num::is_odd(5),      "is_odd 5"
+
+assert_eq Utils::Num::gcd(48, 18), 6,  "gcd 48,18"
+assert_eq Utils::Num::lcm(4,  6),  12, "lcm 4,6"
+
+# ── Utils::Time ──────────────────────────────────────────────────────
+assert_eq Utils::Time::format_duration(0),     "0s",        "duration zero"
+assert_eq Utils::Time::format_duration(65),    "1m 5s",     "duration 1m5s"
+assert_eq Utils::Time::format_duration(3725),  "1h 2m 5s",  "duration 1h2m5s"
+assert_eq Utils::Time::format_duration(90061), "1d 1h 1m 1s", "duration 1d1h1m1s"
+
+assert_eq Utils::Time::parse_duration("1h30m"),  5400,  "parse 1h30m"
+assert_eq Utils::Time::parse_duration("90s"),    90,    "parse 90s"
+assert_eq Utils::Time::parse_duration("1d2h"),   93600, "parse 1d2h"
+
+val $now = time()
+assert_eq Utils::Time::ago($now - 30,    $now), "30 seconds ago",  "ago 30s"
+assert_eq Utils::Time::ago($now - 90,    $now), "1 minute ago",    "ago 1m"
+assert_eq Utils::Time::ago($now - 3600,  $now), "1 hour ago",      "ago 1h"
+assert_eq Utils::Time::ago($now + 90,    $now), "in 1 minute",     "in 1m"
+
+assert_match qr/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/,
+             Utils::Time::format_iso8601($now), "iso8601 shape"
+assert_match qr/^\d{4}-\d{2}-\d{2}$/, Utils::Time::format_date($now), "date shape"
+assert_match qr/^\d{2}:\d{2}:\d{2}$/, Utils::Time::format_time($now), "time shape"
+
+val $tt = Utils::Time::timed(sub { 1 + 1 })
+assert_eq $tt->[0], 2,                         "timed result"
+assert_ok $tt->[1] >= 0,                       "timed elapsed >= 0"
+
+# ── Utils::Path ──────────────────────────────────────────────────────
+assert_eq Utils::Path::ext("a/b.csv"),                 "csv",     "ext csv"
+assert_eq Utils::Path::ext("a/b"),                     "",        "ext none"
+assert_eq Utils::Path::ext("a/b.tar.gz"),              "gz",      "ext last-only"
+assert_eq Utils::Path::compound_ext("a/b.tar.gz"),     "tar.gz",  "compound ext"
+assert_eq Utils::Path::compound_ext("a/b.csv"),        "csv",     "compound single"
+
+assert_eq Utils::Path::without_ext("a/b.csv"),         "a/b",     "without_ext"
+assert_eq Utils::Path::set_ext("a/b.csv", "parquet"),  "a/b.parquet", "set_ext"
+assert_eq Utils::Path::set_ext("a/b", "json"),         "a/b.json",     "set_ext add"
+
+val ($stem, $e) = Utils::Path::splitext("a/b.csv")
+assert_eq $stem, "a/b",                                "splitext stem"
+assert_eq $e,    "csv",                                "splitext ext"
+
+assert_eq Utils::Path::basename("/a/b/c.txt"),         "c.txt",   "basename"
+assert_eq Utils::Path::basename("/a/b/"),              "b",       "basename trailing"
+assert_eq Utils::Path::dirname("/a/b/c.txt"),          "/a/b",    "dirname"
+assert_eq Utils::Path::dirname("c.txt"),               ".",       "dirname bare"
+assert_eq Utils::Path::dirname("/"),                   "/",       "dirname root"
+
+assert_eq Utils::Path::join("a", "b", "c"),            "a/b/c",   "join basic"
+assert_eq Utils::Path::join("/a", "b", "c"),           "/a/b/c",  "join abs"
+assert_eq Utils::Path::join("/a/", "/b/", "c"),        "/a/b/c",  "join slash-soup"
+assert_eq Utils::Path::join("a", "", "b"),             "a/b",     "join skips empty"
+
+assert_eq Utils::Path::normalize("a/./b/../c"),        "a/c",       "normalize rel"
+assert_eq Utils::Path::normalize("/a/b/../../c"),      "/c",        "normalize abs"
+assert_eq Utils::Path::normalize("./a/b"),             "a/b",       "normalize strip-dot"
+assert_eq Utils::Path::normalize("../a"),              "../a",      "normalize keep-rel-up"
+
+assert_ok  Utils::Path::is_absolute("/a/b"),                    "is_absolute"
+assert_ok !Utils::Path::is_absolute("a/b"),                     "is_absolute no"
+assert_ok  Utils::Path::is_bare("file.txt"),                    "is_bare"
+assert_ok !Utils::Path::is_bare("a/b.txt"),                     "is_bare no"
+
+assert_eq Utils::Path::relative("/a/b/c/d", "/a/b"),  "c/d",      "relative descendant"
+assert_eq Utils::Path::relative("/a/x", "/a/b/c"),    "../../x",  "relative cousin"
+assert_eq Utils::Path::relative("/a", "/a"),          ".",        "relative same"
+
+assert_eq Utils::Path::common_prefix("/a/b/c", "/a/b/d", "/a/b/e/f"),
+          "/a/b",                                     "common_prefix"
+
+test_run

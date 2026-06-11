@@ -1,0 +1,170 @@
+## lib/Hash.stk — `use Utils::Hash`
+##
+## Hashref composites. `keys`, `values`, `exists`, `delete`, `each` are
+## stryke builtins and aren't duplicated here.
+
+package Utils::Hash
+
+# ── deep merge ───────────────────────────────────────────────────────
+
+## Recursively merge $src into a copy of $dst. Hashes merge key-by-key;
+## arrays / scalars / coderefs from $src override $dst. Original args
+## are not mutated. Right-most wins on conflict.
+fn Utils::Hash::deep_merge ($dst, $src) {
+    var %out = %$dst
+    for val $k (keys %$src) {
+        val $sv = $src->{$k}
+        if (ref($sv) eq "HASH" && ref($out{$k}) eq "HASH") {
+            $out{$k} = Utils::Hash::deep_merge($out{$k}, $sv)
+        } else {
+            $out{$k} = $sv
+        }
+    }
+    \%out
+}
+
+## N-ary deep merge — later hashes override earlier ones.
+fn Utils::Hash::deep_merge_all (@hashes) {
+    return {} unless @hashes
+    var $acc = shift @hashes
+    for val $h (@hashes) {
+        $acc = Utils::Hash::deep_merge($acc, $h)
+    }
+    $acc
+}
+
+# ── pick / omit ──────────────────────────────────────────────────────
+
+## Subset of $h containing only @keys that exist. Missing keys skipped.
+fn Utils::Hash::pick ($h, @keys) {
+    var %out
+    for val $k (@keys) {
+        $out{$k} = $h->{$k} if exists $h->{$k}
+    }
+    \%out
+}
+
+## Copy of $h with @keys removed.
+fn Utils::Hash::omit ($h, @keys) {
+    var %drop
+    $drop{$_} = 1 for @keys
+    var %out
+    for val $k (keys %$h) {
+        $out{$k} = $h->{$k} unless $drop{$k}
+    }
+    \%out
+}
+
+# ── invert ───────────────────────────────────────────────────────────
+
+## Swap keys and values. Duplicate values collapse — last write wins.
+fn Utils::Hash::invert ($h) {
+    var %out
+    for val $k (keys %$h) {
+        $out{ $h->{$k} } = $k
+    }
+    \%out
+}
+
+# ── deep get / set with dot path ─────────────────────────────────────
+
+## Read nested value via dot path. `deep_get(\%h, "a.b.c")`. Returns
+## undef on any missing segment or non-hash intermediate. Pure read —
+## no autovivification.
+fn Utils::Hash::deep_get ($h, $path) {
+    var $cur = $h
+    for val $seg (split /\./, $path) {
+        return undef unless ref($cur) eq "HASH"
+        return undef unless exists $cur->{$seg}
+        $cur = $cur->{$seg}
+    }
+    $cur
+}
+
+## Set nested value via dot path, mutating $h in place. Creates
+## intermediate hashes as needed. Returns the modified $h.
+fn Utils::Hash::deep_set ($h, $path, $value) {
+    val @segs = split /\./, $path
+    die "Utils::Hash::deep_set: empty path" unless @segs
+    var $cur = $h
+    for var $i (0..$#segs - 1) {
+        val $seg = $segs[$i]
+        $cur->{$seg} = {} unless ref($cur->{$seg}) eq "HASH"
+        $cur = $cur->{$seg}
+    }
+    $cur->{ $segs[-1] } = $value
+    $h
+}
+
+## True if the dot path resolves to an existing key (even if value is undef).
+fn Utils::Hash::deep_has ($h, $path) {
+    var $cur = $h
+    val @segs = split /\./, $path
+    for var $i (0..$#segs - 1) {
+        return 0 unless ref($cur) eq "HASH"
+        return 0 unless exists $cur->{ $segs[$i] }
+        $cur = $cur->{ $segs[$i] }
+    }
+    return 0 unless ref($cur) eq "HASH"
+    exists $cur->{ $segs[-1] } ? 1 : 0
+}
+
+# ── pairs ────────────────────────────────────────────────────────────
+
+## `{a=>1, b=>2}` → `[[a,1],[b,2]]`, sorted by key for determinism.
+fn Utils::Hash::to_pairs ($h) {
+    [ map { [ $_, $h->{$_} ] } sort keys %$h ]
+}
+
+## `[[a,1],[b,2]]` → `{a=>1, b=>2}`. Duplicate keys: last wins.
+fn Utils::Hash::from_pairs ($pairs) {
+    var %out
+    for val $p (@$pairs) {
+        $out{ $p->[0] } = $p->[1]
+    }
+    \%out
+}
+
+# ── map / filter ─────────────────────────────────────────────────────
+
+## Transform every key via `$f->($k, $v)`. Values unchanged.
+fn Utils::Hash::map_keys ($h, $f) {
+    var %out
+    for val $k (keys %$h) {
+        $out{ $f->($k, $h->{$k}) } = $h->{$k}
+    }
+    \%out
+}
+
+## Transform every value via `$f->($v, $k)`. Keys unchanged.
+fn Utils::Hash::map_values ($h, $f) {
+    var %out
+    for val $k (keys %$h) {
+        $out{$k} = $f->($h->{$k}, $k)
+    }
+    \%out
+}
+
+## Keep only keys where `$pred->($k, $v)` is true.
+fn Utils::Hash::filter ($h, $pred) {
+    var %out
+    for val $k (keys %$h) {
+        $out{$k} = $h->{$k} if $pred->($k, $h->{$k})
+    }
+    \%out
+}
+
+# ── shape ────────────────────────────────────────────────────────────
+
+## True if $h has zero keys.
+fn Utils::Hash::is_empty ($h) {
+    scalar(keys %$h) == 0 ? 1 : 0
+}
+
+## True if every value in $h is itself a hashref (handy before deep ops).
+fn Utils::Hash::all_hashes ($h) {
+    for val $v (values %$h) {
+        return 0 unless ref($v) eq "HASH"
+    }
+    1
+}

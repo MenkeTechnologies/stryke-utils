@@ -1,0 +1,32 @@
+## lib/Utils.stk — `use Utils` umbrella for stryke-utils.
+##
+## Pure-stryke package. No cdylib, no helper binary — every function lives
+## in this repo as readable stryke. The umbrella `use Utils` pulls every
+## sublibrary so callers get the full surface without naming each one:
+##
+##   use Utils
+##   Utils::String::slugify("Hello, World!")
+##   Utils::List::chunk([1..10], 3)
+##   Utils::Hash::deep_merge(\%a, \%b)
+##
+## Every function in this package is a *composite* — it does work that
+## isn't a one-call wrapper around a stryke builtin. Things stryke already
+## ships (`length`, `keys`, `sort`, `uc`, `sprintf`, `time`, `mkdir`, …)
+## are NOT re-exported here.
+
+package Utils
+
+use Utils::String
+use Utils::List
+use Utils::Hash
+use Utils::Num
+use Utils::Time
+use Utils::Path
+
+## Package version (single source of truth for the umbrella + sublibs).
+fn Utils::version { "0.1.0" }
+
+## All sublibrary names, in load order.
+fn Utils::modules {
+    qw(Utils::String Utils::List Utils::Hash Utils::Num Utils::Time Utils::Path)
+}

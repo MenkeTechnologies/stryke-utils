@@ -1,0 +1,38 @@
+#!/usr/bin/env stryke
+# examples/config_merge.stk — layered config merge (defaults → env →
+# runtime overrides) using Utils::Hash::deep_merge_all + deep_get.
+#
+# Run:   s examples/config_merge.stk
+
+use Utils
+
+val $defaults = {
+    db => {
+        host => "localhost",
+        port => 5432,
+        pool => { min => 1, max => 10 },
+    },
+    cache => { ttl => 60 },
+    log   => { level => "info" },
+}
+
+val $from_env = {
+    db    => { host => "db.prod.internal", pool => { max => 50 } },
+    log   => { level => "warn" },
+}
+
+val $runtime = {
+    db    => { pool => { max => 100 } },
+    cache => { ttl => 300, enabled => 1 },
+}
+
+val $cfg = Utils::Hash::deep_merge_all($defaults, $from_env, $runtime)
+
+p "=== merged config ==="
+p to_json($cfg)
+p ""
+p "db.host           : " . Utils::Hash::deep_get($cfg, "db.host")
+p "db.pool.max       : " . Utils::Hash::deep_get($cfg, "db.pool.max")
+p "db.pool.min       : " . Utils::Hash::deep_get($cfg, "db.pool.min")  # from defaults
+p "cache.ttl         : " . Utils::Hash::deep_get($cfg, "cache.ttl")
+p "missing.key       : " . (Utils::Hash::deep_get($cfg, "missing.key") // "(undef)")

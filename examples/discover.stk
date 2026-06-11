@@ -1,0 +1,60 @@
+#!/usr/bin/env stryke
+# examples/discover.stk — minimum-viable tour of the `Utils` package.
+#
+# Self-contained: no services, no temp files. Walks one function from
+# each of the six sublibraries (String, List, Hash, Num, Time, Path) so
+# you can see the shape of the surface in <1s.
+#
+# Run:   s examples/discover.stk
+
+use Utils
+
+p "=== Utils discover ==="
+p "version: " . Utils::version()
+p "modules: " . join(", ", Utils::modules())
+p ""
+
+p "── String ──"
+p "  slugify           : " . Utils::String::slugify("Hello, World! 2026")
+p "  snake_case        : " . Utils::String::snake_case("HelloWorld")
+p "  truncate(8)       : " . Utils::String::truncate("Apache Arrow on stryke", 8, "...")
+p "  levenshtein(kt,st): " . Utils::String::levenshtein("kitten", "sitting")
+p ""
+
+p "── List ──"
+p "  chunk([1..7], 3)  : " . to_json(Utils::List::chunk([1,2,3,4,5,6,7], 3))
+p "  uniq stable       : " . to_json(Utils::List::uniq([3,1,2,1,3,4]))
+p "  group_by parity   : " . to_json(Utils::List::group_by(
+    [1,2,3,4,5,6], sub ($x) { $x % 2 == 0 ? "even" : "odd" }))
+p "  median([5,2,1,4,3]): " . Utils::List::median([5,2,1,4,3])
+p ""
+
+p "── Hash ──"
+val $merged = Utils::Hash::deep_merge(
+    { db => { host => "localhost", port => 5432 }, retries => 3 },
+    { db => { port => 6432, ssl => 1 }, timeout => 30 })
+p "  deep_merge        : " . to_json($merged)
+p "  deep_get a.b.c    : " . to_json(Utils::Hash::deep_get(
+    { a => { b => { c => 42 } } }, "a.b.c"))
+p ""
+
+p "── Num ──"
+p "  format_bytes(1.5M): " . Utils::Num::format_bytes(1572864)
+p "  format_number     : " . Utils::Num::format_number(1234567.89)
+p "  format_percent    : " . Utils::Num::format_percent(0.5238)
+p "  ordinal(21)       : " . Utils::Num::ordinal(21)
+p ""
+
+p "── Time ──"
+p "  format_duration   : " . Utils::Time::format_duration(90061)
+p "  parse_duration    : " . Utils::Time::parse_duration("1h30m") . "s"
+p "  ago(now-90)       : " . Utils::Time::ago(time() - 90)
+p "  iso8601           : " . Utils::Time::format_iso8601()
+p ""
+
+p "── Path ──"
+p "  compound_ext      : " . Utils::Path::compound_ext("archive.tar.gz")
+p "  set_ext csv→parq  : " . Utils::Path::set_ext("data/sales.csv", "parquet")
+p "  normalize         : " . Utils::Path::normalize("/a/b/../c/./d")
+p "  relative          : " . Utils::Path::relative("/a/x", "/a/b/c")
+p "  common_prefix     : " . Utils::Path::common_prefix("/a/b/c", "/a/b/d", "/a/b/e/f")

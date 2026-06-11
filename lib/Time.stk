@@ -1,0 +1,121 @@
+## lib/Time.stk — `use Utils::Time`
+##
+## Time/duration composites. `time`, `localtime`, `gmtime`, `sleep` are
+## stryke builtins — not re-exported.
+
+package Utils::Time
+
+# ── duration formatting ──────────────────────────────────────────────
+
+## Seconds → human duration. format_duration(3725) → "1h 2m 5s".
+## Drops zero leading components; `format_duration(0)` → "0s".
+fn Utils::Time::format_duration ($secs) {
+    val $sign = $secs < 0 ? "-" : ""
+    var $s = abs(int($secs))
+    return "${sign}0s" if $s == 0
+    val $d = int($s / 86400); $s %= 86400
+    val $h = int($s / 3600);  $s %= 3600
+    val $m = int($s / 60);    $s %= 60
+    var @parts
+    push @parts, "${d}d" if $d
+    push @parts, "${h}h" if $h
+    push @parts, "${m}m" if $m
+    push @parts, "${s}s" if $s
+    $sign . join(" ", @parts)
+}
+
+## Duration string → seconds. parse_duration("1h30m") → 5400.
+## Accepts: d (days), h (hours), m (minutes), s (seconds), ms.
+## Whitespace ignored. Unknown unit → die.
+fn Utils::Time::parse_duration ($s) {
+    val $t = $s =~ s/\s+//gr
+    return 0 if $t eq ""
+    var $total = 0
+    while ($t =~ /(\d+(?:\.\d+)?)(ms|s|m|h|d)/g) {
+        val ($num, $unit) = ($1, $2)
+        if    ($unit eq "ms") { $total += $num / 1000 }
+        elsif ($unit eq "s")  { $total += $num }
+        elsif ($unit eq "m")  { $total += $num * 60 }
+        elsif ($unit eq "h")  { $total += $num * 3600 }
+        elsif ($unit eq "d")  { $total += $num * 86400 }
+    }
+    die "Utils::Time::parse_duration: no recognized units in `$s`" if $total == 0 && $t !~ /^0+(\.0+)?(ms|s|m|h|d)?$/
+    $total
+}
+
+# ── "ago" / "from now" ───────────────────────────────────────────────
+
+## Relative time. ago(time() - 90) → "1 minute ago". Past values are
+## "X ago", future values "in X". Granularity rolls to the nearest unit.
+fn Utils::Time::ago ($epoch, $now = undef) {
+    $now //= time()
+    val $diff = $now - $epoch
+    val $abs  = abs($diff)
+    val $suffix = $diff >= 0 ? "ago" : ""
+    val $prefix = $diff >= 0 ? ""    : "in "
+    val ($n, $unit) =
+        $abs < 60         ? ($abs,                       "second") :
+        $abs < 3600       ? (int($abs / 60),             "minute") :
+        $abs < 86400      ? (int($abs / 3600),           "hour")   :
+        $abs < 604800     ? (int($abs / 86400),          "day")    :
+        $abs < 2592000    ? (int($abs / 604800),         "week")   :
+        $abs < 31536000   ? (int($abs / 2592000),        "month")  :
+                            (int($abs / 31536000),       "year")
+    val $plural = $n == 1 ? "" : "s"
+    val $body = "$n $unit$plural"
+    $suffix eq "" ? "$prefix$body" : "$body $suffix"
+}
+
+# ── high-resolution timestamps ───────────────────────────────────────
+
+## Milliseconds since the epoch as an integer. Wraps `time()` × 1000
+## when fractional time isn't available.
+fn Utils::Time::now_ms {
+    int(time() * 1000)
+}
+
+## Microseconds since the epoch as an integer.
+fn Utils::Time::now_us {
+    int(time() * 1000000)
+}
+
+# ── ISO-8601 / RFC-3339 ──────────────────────────────────────────────
+
+## UTC ISO-8601 string. format_iso8601(time()) → "2026-06-10T14:23:05Z".
+fn Utils::Time::format_iso8601 ($epoch = undef) {
+    $epoch //= time()
+    val ($sec, $min, $hour, $mday, $mon, $year) = gmtime(int($epoch))
+    sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ",
+            $year + 1900, $mon + 1, $mday, $hour, $min, $sec)
+}
+
+## YYYY-MM-DD (UTC).
+fn Utils::Time::format_date ($epoch = undef) {
+    $epoch //= time()
+    val ($_, $__, $___, $mday, $mon, $year) = gmtime(int($epoch))
+    sprintf("%04d-%02d-%02d", $year + 1900, $mon + 1, $mday)
+}
+
+## HH:MM:SS (UTC).
+fn Utils::Time::format_time ($epoch = undef) {
+    $epoch //= time()
+    val ($sec, $min, $hour) = gmtime(int($epoch))
+    sprintf("%02d:%02d:%02d", $hour, $min, $sec)
+}
+
+# ── timing helpers ───────────────────────────────────────────────────
+
+## Run $code and return (result, elapsed-seconds). $code is a coderef.
+fn Utils::Time::timed ($code) {
+    val $t0 = time()
+    val $r  = $code->()
+    val $dt = time() - $t0
+    [$r, $dt]
+}
+
+## Run $code and return the elapsed seconds only (result discarded).
+fn Utils::Time::elapsed ($code) {
+    val $t0 = time()
+    $code->()
+    time() - $t0
+}
