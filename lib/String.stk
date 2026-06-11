@@ -134,3 +134,90 @@ fn Utils::String::unwrap ($s, $prefix, $suffix = undef) {
     return $s unless substr($s, -$ls) eq $suf
     substr($s, $lp, length($s) - $lp - $ls)
 }
+
+# ── truncation ───────────────────────────────────────────────────────
+
+## Truncate to at most $max characters, appending $ellipsis (default
+## "…") when the string is longer. The ellipsis counts toward $max, so
+## the result's character width never exceeds $max. Strings already
+## within $max are returned unchanged. The ellipsis width is measured
+## in characters (`char_length`) so a multibyte "…" counts as 1; byte
+## offsets into the content assume single-byte (ASCII) text.
+fn Utils::String::ellipsize ($s, $max, $ellipsis = "…") {
+    return $s if char_length($s) <= $max
+    val $keep = $max - char_length($ellipsis)
+    return substr($s, 0, $max) if $keep <= 0
+    substr($s, 0, $keep) . $ellipsis
+}
+
+## Keep the first $n whitespace-delimited words, appending $ellipsis
+## (default "…") when words were dropped. Leading/trailing whitespace
+## is trimmed in the result.
+fn Utils::String::truncate_words ($s, $n, $ellipsis = "…") {
+    val @words = grep { length $_ } split /\s+/, $s
+    return join(" ", @words) if scalar(@words) <= $n
+    return $ellipsis if $n <= 0
+    join(" ", @words[0 .. $n - 1]) . $ellipsis
+}
+
+# ── nth occurrence ───────────────────────────────────────────────────
+
+## Index of the $n-th (1-based) occurrence of $needle in $s, or -1 if
+## there are fewer than $n non-overlapping occurrences.
+fn Utils::String::nth_index ($s, $needle, $n) {
+    return -1 if $n < 1 || length($needle) == 0
+    val $w = length($needle)
+    var $i = -1
+    var $count = 0
+    while ($count < $n) {
+        $i = index($s, $needle, $i + 1)
+        return -1 if $i < 0
+        $count++
+        $i = $i + $w - 1 if $count < $n
+    }
+    $i
+}
+
+# ── bounded split ────────────────────────────────────────────────────
+
+## Split $s on $sep into AT MOST $n pieces; the final piece keeps any
+## remaining separators verbatim. splitn("a:b:c:d", ":", 2) →
+## ("a", "b:c:d"). $n < 1 returns the whole string as one piece.
+fn Utils::String::splitn ($s, $sep, $n) {
+    var @out
+    var $rest = $s
+    val $w = length($sep)
+    if ($n >= 1) {
+        while (scalar(@out) < $n - 1) {
+            val $i = index($rest, $sep)
+            last if $i < 0
+            push @out, substr($rest, 0, $i)
+            $rest = substr($rest, $i + $w)
+        }
+    }
+    push @out, $rest
+    @out
+}
+
+# ── case (first letter) ──────────────────────────────────────────────
+
+## Uppercase the first character only, leaving the rest untouched.
+## (`title_case` upcases every word; this touches only char 0.)
+fn Utils::String::capitalize_first ($s) {
+    return $s if length($s) == 0
+    uc(substr($s, 0, 1)) . substr($s, 1)
+}
+
+## Lowercase the first character only.
+fn Utils::String::uncapitalize ($s) {
+    return $s if length($s) == 0
+    lc(substr($s, 0, 1)) . substr($s, 1)
+}
+
+## Capitalize the first letter of every whitespace-delimited word,
+## lowercasing the rest. titleize("hELLO wORLD") → "Hello World".
+## Collapses internal whitespace to single spaces.
+fn Utils::String::titleize ($s) {
+    join " ", map { Utils::String::capitalize_first(lc($_)) }
+              grep { length $_ } split /\s+/, $s
+}

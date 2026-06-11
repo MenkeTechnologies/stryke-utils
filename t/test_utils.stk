@@ -263,4 +263,53 @@ assert_eq Utils::Num::percentile_of([1, 2, 3, 4], 3),  62.5, "percentile_of midr
 assert_eq Utils::Num::percentile_of([1, 2, 3, 4], 99), 100,  "percentile_of above all"
 assert_eq Utils::Num::percentile_of([5], 1),           0,    "percentile_of below all"
 
+# ── Utils::String (truncation, nth, splitn, case) ────────────────────
+assert_eq Utils::String::ellipsize("hello world", 8),       "hello w…", "ellipsize truncates with default ellipsis"
+assert_eq Utils::String::ellipsize("short", 10),            "short",    "ellipsize leaves short strings"
+assert_eq Utils::String::ellipsize("hello", 5),             "hello",    "ellipsize exact length untouched"
+assert_eq Utils::String::ellipsize("hello", 4, ".."),       "he..",     "ellipsize custom ellipsis counts toward max"
+assert_eq char_length(Utils::String::ellipsize("hello world", 6)), 6,   "ellipsize never exceeds max char width"
+
+assert_eq Utils::String::truncate_words("a b c d e", 3),    "a b c…",   "truncate_words keeps first n"
+assert_eq Utils::String::truncate_words("a b", 5),          "a b",      "truncate_words fewer words untouched"
+assert_eq Utils::String::truncate_words("  a   b   c  ", 2),"a b…",     "truncate_words normalizes whitespace"
+assert_eq Utils::String::truncate_words("a b c", 0),        "…",        "truncate_words zero words"
+
+assert_eq Utils::String::nth_index("a.b.c.d", ".", 1),      1,  "nth_index first"
+assert_eq Utils::String::nth_index("a.b.c.d", ".", 3),      5,  "nth_index third"
+assert_eq Utils::String::nth_index("a.b.c.d", ".", 9),     -1,  "nth_index beyond count"
+assert_eq Utils::String::nth_index("aaaa", "aa", 2),        2,  "nth_index non-overlapping"
+assert_eq Utils::String::nth_index("abc", "", 1),          -1,  "nth_index empty needle"
+
+val @sp = Utils::String::splitn("a:b:c:d", ":", 2)
+assert_eq scalar(@sp), 2,        "splitn caps piece count"
+assert_eq $sp[0], "a",           "splitn first piece"
+assert_eq $sp[1], "b:c:d",       "splitn last piece keeps remainder"
+assert_eq scalar(Utils::String::splitn("a:b", ":", 5)), 2, "splitn fewer than n"
+assert_eq scalar(Utils::String::splitn("a:b", ":", 0)), 1, "splitn n<1 is whole string"
+
+assert_eq Utils::String::capitalize_first("hello"),  "Hello", "capitalize_first"
+assert_eq Utils::String::capitalize_first("hELLO"),  "HELLO", "capitalize_first leaves rest"
+assert_eq Utils::String::capitalize_first(""),       "",      "capitalize_first empty"
+assert_eq Utils::String::uncapitalize("Hello"),      "hello", "uncapitalize"
+assert_eq Utils::String::titleize("hELLO wORLD"),    "Hello World", "titleize caps each word, lowers rest"
+assert_eq Utils::String::titleize("  one  two  "),   "One Two",     "titleize collapses whitespace"
+
+# ── Utils::Time (calendar, duration, ISO parse) ──────────────────────
+assert_eq Utils::Time::day_of_week(0),         "Thursday",  "day_of_week epoch 0 is Thursday"
+assert_eq Utils::Time::format_human(0),        "Thursday, 1 January 1970", "format_human epoch 0"
+assert_eq Utils::Time::format_clock(0),        "12:00:00 AM", "format_clock midnight is 12 AM"
+assert_eq Utils::Time::format_clock(43200),    "12:00:00 PM", "format_clock noon is 12 PM"
+assert_eq Utils::Time::format_clock(46800),    "01:00:00 PM", "format_clock 1pm"
+
+assert_eq Utils::Time::add_duration(1000, "1h30m"), 1000 + 5400, "add_duration"
+assert_eq Utils::Time::sub_duration(10000, "1h"),   10000 - 3600, "sub_duration"
+
+assert_eq Utils::Time::parse_iso8601("1970-01-01T00:00:00Z"), 0,          "parse_iso8601 epoch zero"
+assert_eq Utils::Time::parse_iso8601("2023-11-14T22:13:20Z"), 1700000000, "parse_iso8601 known epoch"
+assert_eq Utils::Time::parse_iso8601("1970-01-01 00:00:01"),  1,          "parse_iso8601 space form, no Z"
+assert_dies sub { Utils::Time::parse_iso8601("not-a-date") },  "parse_iso8601 rejects garbage"
+# round-trip: format then parse returns the original epoch
+assert_eq Utils::Time::parse_iso8601(Utils::Time::format_iso8601(1700000000)), 1700000000, "iso8601 round-trip"
+
 test_run

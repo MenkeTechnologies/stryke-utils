@@ -85,3 +85,71 @@ fn Utils::Time::timed ($code) {
     val $dt = time() - $t0
     [$r, $dt]
 }
+
+# ── calendar names (UTC) ─────────────────────────────────────────────
+
+## Weekday name for an epoch (UTC). day_of_week(0) → "Thursday".
+## Composes gmtime's wday (0=Sunday) with the weekday_name builtin.
+fn Utils::Time::day_of_week ($epoch = undef) {
+    $epoch //= time()
+    val @g = gmtime(int($epoch))
+    weekday_name($g[6])
+}
+
+## Long human date (UTC): "Thursday, 1 January 1970".
+## NB: gmtime's $mon is 0-based but month_name is 1-based — hence +1.
+fn Utils::Time::format_human ($epoch = undef) {
+    $epoch //= time()
+    val ($sec, $min, $hour, $mday, $mon, $year, $wday) = gmtime(int($epoch))
+    sprintf("%s, %d %s %d", weekday_name($wday), $mday, month_name($mon + 1), $year + 1900)
+}
+
+## 12-hour clock (UTC): "12:00:00 AM". Pairs with format_date.
+fn Utils::Time::format_clock ($epoch = undef) {
+    $epoch //= time()
+    val ($sec, $min, $hour) = gmtime(int($epoch))
+    val $ampm = $hour < 12 ? "AM" : "PM"
+    var $h12 = $hour % 12
+    $h12 = 12 if $h12 == 0
+    sprintf("%02d:%02d:%02d %s", $h12, $min, $sec, $ampm)
+}
+
+# ── duration arithmetic ──────────────────────────────────────────────
+
+## Add a duration string (parse_duration syntax) to an epoch.
+##   add_duration(time(), "1h30m") → epoch 5400s later
+fn Utils::Time::add_duration ($epoch, $dur) {
+    $epoch + Utils::Time::parse_duration($dur)
+}
+
+## Subtract a duration string from an epoch.
+fn Utils::Time::sub_duration ($epoch, $dur) {
+    $epoch - Utils::Time::parse_duration($dur)
+}
+
+# ── ISO-8601 parse (UTC) ─────────────────────────────────────────────
+
+## Days from the Unix epoch (1970-01-01) for a UTC civil date, via
+## Howard Hinnant's days-from-civil algorithm (exact, no table). Helper
+## for parse_iso8601. $y is the full year, $m is 1-based.
+fn Utils::Time::_days_from_civil ($y, $m, $d) {
+    var $yy = $m <= 2 ? $y - 1 : $y
+    val $era = int(($yy >= 0 ? $yy : $yy - 399) / 400)
+    val $yoe = $yy - $era * 400
+    val $doy = int((153 * ($m + ($m > 2 ? -3 : 9)) + 2) / 5) + $d - 1
+    val $doe = $yoe * 365 + int($yoe / 4) - int($yoe / 100) + $doy
+    $era * 146097 + $doe - 719468
+}
+
+## Parse a UTC ISO-8601 timestamp into an epoch (seconds). Accepts
+## "YYYY-MM-DDTHH:MM:SSZ" and the space-separated "YYYY-MM-DD HH:MM:SS"
+## form; a trailing "Z" is optional. Inverse of format_iso8601 — the
+## round trip is exact. Dies on a malformed string.
+fn Utils::Time::parse_iso8601 ($s) {
+    unless ($s =~ /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})Z?$/) {
+        die "Utils::Time::parse_iso8601: not an ISO-8601 UTC timestamp: `$s`"
+    }
+    val ($y, $mon, $d, $hh, $mm, $ss) = ($1, $2, $3, $4, $5, $6)
+    val $days = Utils::Time::_days_from_civil($y, $mon, $d)
+    $days * 86400 + $hh * 3600 + $mm * 60 + $ss
+}
