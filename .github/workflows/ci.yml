@@ -93,20 +93,21 @@ jobs:
           tar -C "${HOME}/.local/bin" -xzf /tmp/stryke.tar.gz
           chmod +x "${HOME}/.local/bin"/{stryke,st,s} 2>/dev/null || true
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
-          "${HOME}/.local/bin/stryke" --version | head -1
+          "${HOME}/.local/bin/stryke" --version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Syntax-check every .stk file
         run: |
-          set -euo pipefail
+          set -uo pipefail
           fail=0
           for f in lib/*.stk bin/*.stk t/*.stk examples/*.stk; do
               [[ -f "$f" ]] || continue
-              if stryke -c "$f" 2>&1 | grep -qE "syntax OK"; then
+              out=$(stryke -c "$f" 2>&1)
+              if [[ "$out" == *"syntax OK"* ]]; then
                   echo "OK   $f"
               else
                   echo "FAIL $f"
-                  stryke -c "$f" 2>&1 | head -5 | sed 's/^/        /'
+                  printf '%s\n' "$out" | head -5 | sed 's/^/        /'
                   fail=1
               fi
           done
