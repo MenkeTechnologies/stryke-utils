@@ -69,3 +69,49 @@ fn Utils::Num::percentile_of ($sample, $x) {
     }
     ($below + $ties / 2) / scalar(@$sample) * 100
 }
+
+# ── digits ───────────────────────────────────────────────────────────
+
+## Sum of the decimal digits of |int($n)|. digit_sum(1234) → 10.
+## (Repeated application converges to the `digital_root` builtin.)
+fn Utils::Num::digit_sum ($n) {
+    var $x = abs(int($n))
+    var $sum = 0
+    while ($x > 0) {
+        $sum += $x % 10
+        $x = int($x / 10)
+    }
+    $sum
+}
+
+## Count of decimal digits in |int($n)|. digit_count(0) → 1.
+fn Utils::Num::digit_count ($n) {
+    val $x = abs(int($n))
+    return 1 if $x == 0
+    length("$x")
+}
+
+# ── proportions ──────────────────────────────────────────────────────
+
+## What percent $part is of $whole. pct_of(25, 200) → 12.5. Dies on a
+## zero whole (undefined). Complements `percent_change`.
+fn Utils::Num::pct_of ($part, $whole) {
+    die "Utils::Num::pct_of: whole must be nonzero" if $whole == 0
+    $part / $whole * 100
+}
+
+# ── dispersion ───────────────────────────────────────────────────────
+
+## Mean absolute deviation of \@nums about their mean. A robust spread
+## measure that — unlike variance — keeps the input's units.
+##   mean_abs_dev([1, 2, 3, 4]) → 1
+fn Utils::Num::mean_abs_dev ($nums) {
+    val $n = scalar(@$nums)
+    die "Utils::Num::mean_abs_dev: empty input" if $n == 0
+    var $sum = 0
+    $sum += $_ for @$nums
+    val $mean = $sum / $n
+    var $dev = 0
+    $dev += abs($_ - $mean) for @$nums
+    $dev / $n
+}

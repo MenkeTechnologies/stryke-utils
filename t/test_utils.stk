@@ -339,4 +339,23 @@ assert_ok !Utils::Path::is_under("/a/bc", "/a/b"),    "is_under rejects sibling-
 assert_ok !Utils::Path::is_under("/x", "/a/b"),       "is_under rejects outside"
 assert_ok  Utils::Path::is_under("/a/b/../b/c", "/a/b"), "is_under normalizes first"
 
+# ── Utils::Num (digits, proportions, dispersion) ─────────────────────
+assert_eq Utils::Num::digit_sum(1234),    10,  "digit_sum"
+assert_eq Utils::Num::digit_sum(-99),     18,  "digit_sum abs of negative"
+assert_eq Utils::Num::digit_sum(0),        0,  "digit_sum zero"
+assert_eq Utils::Num::digit_sum(40.7),     4,  "digit_sum truncates to int"
+
+assert_eq Utils::Num::digit_count(1234),   4,  "digit_count"
+assert_eq Utils::Num::digit_count(0),      1,  "digit_count zero is 1"
+assert_eq Utils::Num::digit_count(-50),    2,  "digit_count abs of negative"
+
+assert_eq Utils::Num::pct_of(25, 200),     12.5, "pct_of"
+assert_eq Utils::Num::pct_of(3, 3),        100,  "pct_of whole"
+assert_dies fn { Utils::Num::pct_of(1, 0) },     "pct_of dies on zero whole"
+
+assert_eq Utils::Num::mean_abs_dev([1, 2, 3, 4]),  1, "mean_abs_dev symmetric"
+assert_eq Utils::Num::mean_abs_dev([5]),           0, "mean_abs_dev single"
+assert_eq Utils::Num::mean_abs_dev([2, 2, 2]),     0, "mean_abs_dev constant"
+assert_dies fn { Utils::Num::mean_abs_dev([]) },       "mean_abs_dev dies on empty"
+
 test_run
