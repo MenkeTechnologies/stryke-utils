@@ -73,11 +73,13 @@ jobs:
       - run: bash tests/docs-has-body-tag.sh
       - run: bash tests/workflow-no-tabs.sh
 
-  # Parse every .stk file with the real stryke binary. Grabs a prebuilt
-  # tarball from strykelang's release page — no rustup, no cargo install
-  # on the runner. Hard fail on any parse error.
-  stryke-parse:
-    name: Stryke parse (lib + bin + t + examples)
+  # Parse every .stk file with the real stryke binary, install the
+  # package into the global store, and run the t/ test suite. Grabs a
+  # prebuilt tarball from strykelang's release page — no rustup, no
+  # cargo install on the runner. Hard fail on any parse error or
+  # failing assertion.
+  stryke-parse-and-test:
+    name: Stryke parse + tests (lib + bin + t + examples)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,3 +114,7 @@ jobs:
               fi
           done
           exit $fail
+      - name: Install package into global store
+        run: s pkg install -g .
+      - name: Run t/ test suite
+        run: s test t/

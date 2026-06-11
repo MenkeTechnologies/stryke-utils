@@ -28,7 +28,7 @@ fn Utils::Path::compound_ext ($path) {
     val @parts = split /\./, $base
     return "" if @parts <= 1
     var @suffix
-    for var $i ($#parts .. 1) {
+    for var $i (reverse 1..$#parts) {
         val $p = $parts[$i]
         last unless $p =~ /^[a-zA-Z0-9]+$/ && length($p) <= 4
         unshift @suffix, $p
