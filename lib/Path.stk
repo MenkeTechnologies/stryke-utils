@@ -146,3 +146,60 @@ fn Utils::Path::relative ($target, $from) {
     val $body = join "/", (("..") x $ups), @rest
     $body eq "" ? "." : $body
 }
+
+# ── filename surgery ─────────────────────────────────────────────────
+
+## Replace the final path segment, keeping the directory. The new name
+## is taken verbatim (extension and all). with_name("a/b.txt", "c.md")
+## → "a/c.md"; with_name("solo.txt", "x") → "x".
+fn Utils::Path::with_name ($path, $name) {
+    val $dir = dirname($path)
+    $dir eq "." || $dir eq "" ? $name : "$dir/$name"
+}
+
+## Insert $suffix before the (single-segment) extension.
+## add_suffix("a/b.txt", "-bak") → "a/b-bak.txt";
+## add_suffix("README", ".old") → "README.old" when there's no ext.
+fn Utils::Path::add_suffix ($path, $suffix) {
+    val ($stem, $e) = Utils::Path::splitext($path)
+    $e eq "" ? "$path$suffix" : "$stem$suffix.$e"
+}
+
+# ── trailing slash ───────────────────────────────────────────────────
+
+## Remove trailing slashes (but never reduce "/" itself to "").
+fn Utils::Path::strip_trailing_slash ($path) {
+    return $path if $path eq "/"
+    val $t = $path =~ s{/+$}{}r
+    $t eq "" ? "/" : $t
+}
+
+## Guarantee exactly one trailing slash.
+fn Utils::Path::ensure_trailing_slash ($path) {
+    Utils::Path::strip_trailing_slash($path) . "/"
+}
+
+# ── segmentation ─────────────────────────────────────────────────────
+
+## Split a path into its non-empty segments. A leading "/" is dropped
+## (it's implied by is_absolute). segments("/a/b/c") → ["a","b","c"].
+fn Utils::Path::segments ($path) {
+    [ grep { length } split m{/+}, $path ]
+}
+
+## Segment count — the path's depth. depth("/a/b/c") → 3, depth("/") → 0.
+fn Utils::Path::depth ($path) {
+    scalar @{ Utils::Path::segments($path) }
+}
+
+# ── containment ──────────────────────────────────────────────────────
+
+## True if $path is at or below $base after normalizing both. A path is
+## considered under itself. Lexical only — no symlink resolution.
+fn Utils::Path::is_under ($path, $base) {
+    val $p = Utils::Path::normalize($path)
+    val $b = Utils::Path::normalize($base)
+    return 1 if $p eq $b
+    val $bb = $b eq "/" ? "/" : "$b/"
+    index($p, $bb) == 0 ? 1 : 0
+}

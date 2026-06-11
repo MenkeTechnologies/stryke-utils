@@ -312,4 +312,31 @@ assert_dies sub { Utils::Time::parse_iso8601("not-a-date") },  "parse_iso8601 re
 # round-trip: format then parse returns the original epoch
 assert_eq Utils::Time::parse_iso8601(Utils::Time::format_iso8601(1700000000)), 1700000000, "iso8601 round-trip"
 
+# ── Utils::Path (filename surgery, slashes, segments, containment) ────
+assert_eq Utils::Path::with_name("a/b.txt", "c.md"),  "a/c.md", "with_name swaps final segment"
+assert_eq Utils::Path::with_name("solo.txt", "x"),    "x",      "with_name no-dir"
+assert_eq Utils::Path::with_name("/a/b/c", "d"),      "/a/b/d", "with_name absolute"
+
+assert_eq Utils::Path::add_suffix("a/b.txt", "-bak"), "a/b-bak.txt", "add_suffix before ext"
+assert_eq Utils::Path::add_suffix("README", ".old"),  "README.old",  "add_suffix no ext appends"
+assert_eq Utils::Path::add_suffix("a/b.tar.gz", "-1"),"a/b.tar-1.gz","add_suffix single-segment ext"
+
+assert_eq Utils::Path::strip_trailing_slash("a/b/"),  "a/b", "strip_trailing_slash"
+assert_eq Utils::Path::strip_trailing_slash("a/b///"),"a/b", "strip_trailing_slash multiple"
+assert_eq Utils::Path::strip_trailing_slash("/"),     "/",   "strip_trailing_slash keeps root"
+assert_eq Utils::Path::ensure_trailing_slash("a/b"),  "a/b/","ensure_trailing_slash adds"
+assert_eq Utils::Path::ensure_trailing_slash("a/b/"), "a/b/","ensure_trailing_slash idempotent"
+
+assert_eq join(",", @{ Utils::Path::segments("/a/b/c") }), "a,b,c", "segments drops leading slash"
+assert_eq scalar(@{ Utils::Path::segments("/") }),        0,        "segments root is empty"
+assert_eq Utils::Path::depth("/a/b/c"),                   3,        "depth counts segments"
+assert_eq Utils::Path::depth("/"),                        0,        "depth root is 0"
+assert_eq Utils::Path::depth("rel/path"),                 2,        "depth relative"
+
+assert_ok  Utils::Path::is_under("/a/b/c", "/a/b"),   "is_under descendant"
+assert_ok  Utils::Path::is_under("/a/b", "/a/b"),     "is_under self"
+assert_ok !Utils::Path::is_under("/a/bc", "/a/b"),    "is_under rejects sibling-prefix"
+assert_ok !Utils::Path::is_under("/x", "/a/b"),       "is_under rejects outside"
+assert_ok  Utils::Path::is_under("/a/b/../b/c", "/a/b"), "is_under normalizes first"
+
 test_run
