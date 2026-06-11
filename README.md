@@ -130,7 +130,7 @@ Utils::Path::normalize("…")
 
 | Module | `use` | Highlights |
 |---|---|---|
-| String | `use Utils::String` | `trim`, `slugify`, `{snake,kebab,camel,pascal,title}_case`, `pad_{left,right,center}`, `truncate`, `strip_ansi`, `visible_width`, `starts_with`, `ends_with`, `contains`, `count_occurrences`, `levenshtein`, `word_wrap`, `reverse_chars` |
+| String | `use Utils::String` | `trim`/`ltrim`/`rtrim`, `slugify`, `{snake,kebab,camel,pascal,title}_case`, `swap_case`, `pad_{left,right,center}`, `truncate`, `strip_ansi`, `visible_width`, `starts_with`, `ends_with`, `contains`, `count_occurrences`, `find_all_indices`, `levenshtein`, `hamming`, `dice_coefficient`, `common_prefix`, `common_suffix`, `word_wrap`, `indent`, `dedent`, `squeeze`, `compact_whitespace`, `partition`/`rpartition`, `between`, `chunks`, `mask_middle`, `escape_shell`, `expand_tabs`, `rot13`, `unwrap`, `is_blank`, `is_palindrome`, `reverse_chars` |
 | List   | `use Utils::List`   | `chunk`, `uniq`, `uniq_by`, `group_by`, `count_by`, `index_by`, `partition`, `compact`, `pluck`, `flatten`, `sum`, `mean`, `median`, `min_by`, `max_by`, `sort_by`, `zip`, `difference`, `intersection`, `union`, `range`, `windows`, `take`, `drop` |
 | Hash   | `use Utils::Hash`   | `deep_merge`, `deep_merge_all`, `pick`, `omit`, `invert`, `deep_get`, `deep_set`, `deep_has`, `to_pairs`, `from_pairs`, `map_keys`, `map_values`, `filter`, `is_empty`, `all_hashes` |
 | Num    | `use Utils::Num`    | `clamp`, `between`, `lerp`, `round_to`, `round_to_multiple`, `format_number`, `format_bytes`, `format_percent`, `ordinal`, `sign`, `is_even`, `is_odd`, `gcd`, `lcm` |

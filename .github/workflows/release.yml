@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release tarballs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [[ -n "${{ inputs.tag }}" ]]; then
+              echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+              echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Pure-stryke: one tarball, no compilation. The content is byte-identical
+      # across triples, but stryke's `pkg install -g github.com/...` resolver
+      # looks for per-triple artifacts. We publish the four MenkeTechnologies-
+      # supported triples as separate tarballs that all point at the same
+      # `.stk`-only payload.
+      - name: Stage release tarballs
+        id: stage
+        # Layout matches what stryke's
+        # `pkg::commands::install_global_from_github` expects:
+        #
+        #   stryke-utils-<tag>-<triple>/
+        #     stryke.toml
+        #     lib/
+        #       Utils.stk
+        #       String.stk
+        #       List.stk
+        #       Hash.stk
+        #       Num.stk
+        #       Time.stk
+        #       Path.stk
+        #     bin/utils.stk
+        #     examples/*.stk
+        #     t/test_utils.stk
+        #     LICENSE
+        #     README.md
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          ARCHIVES=()
+          mkdir -p staging dist
+          for TRIPLE in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu \
+                        x86_64-apple-darwin aarch64-apple-darwin; do
+              STEM="stryke-utils-${TAG}-${TRIPLE}"
+              ROOT="staging/${STEM}"
+              mkdir -p "${ROOT}/lib" "${ROOT}/bin" "${ROOT}/t" "${ROOT}/examples"
+              cp stryke.toml "${ROOT}/"
+              cp LICENSE README.md "${ROOT}/"
+              cp lib/*.stk "${ROOT}/lib/"
+              cp bin/*.stk "${ROOT}/bin/"
+              cp t/*.stk   "${ROOT}/t/"
+              cp examples/*.stk "${ROOT}/examples/"
+              ARCHIVE="dist/${STEM}.tar.gz"
+              tar -C staging -czf "${ARCHIVE}" "${STEM}"
+              if command -v sha256sum >/dev/null 2>&1; then
+                  sha256sum "${ARCHIVE}" | awk '{print $1}' > "${ARCHIVE}.sha256"
+              else
+                  shasum -a 256 "${ARCHIVE}" | awk '{print $1}' > "${ARCHIVE}.sha256"
+              fi
+              ARCHIVES+=("${ARCHIVE}" "${ARCHIVE}.sha256")
+          done
+          # Also publish a platform-neutral tarball for resolvers that don't
+          # triple-detect (lets users `curl | tar` it directly).
+          STEM_NEUTRAL="stryke-utils-${TAG}"
+          ROOT_NEUTRAL="staging/${STEM_NEUTRAL}"
+          mkdir -p "${ROOT_NEUTRAL}/lib" "${ROOT_NEUTRAL}/bin" \
+                   "${ROOT_NEUTRAL}/t" "${ROOT_NEUTRAL}/examples"
+          cp stryke.toml LICENSE README.md "${ROOT_NEUTRAL}/"
+          cp lib/*.stk "${ROOT_NEUTRAL}/lib/"
+          cp bin/*.stk "${ROOT_NEUTRAL}/bin/"
+          cp t/*.stk   "${ROOT_NEUTRAL}/t/"
+          cp examples/*.stk "${ROOT_NEUTRAL}/examples/"
+          ARCHIVE_NEUTRAL="dist/${STEM_NEUTRAL}.tar.gz"
+          tar -C staging -czf "${ARCHIVE_NEUTRAL}" "${STEM_NEUTRAL}"
+          if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "${ARCHIVE_NEUTRAL}" | awk '{print $1}' \
+                  > "${ARCHIVE_NEUTRAL}.sha256"
+          else
+              shasum -a 256 "${ARCHIVE_NEUTRAL}" | awk '{print $1}' \
+                  > "${ARCHIVE_NEUTRAL}.sha256"
+          fi
+          ARCHIVES+=("${ARCHIVE_NEUTRAL}" "${ARCHIVE_NEUTRAL}.sha256")
+          {
+              echo "archives<<EOF"
+              printf '%s\n' "${ARCHIVES[@]}"
+              echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          ls -la dist/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: ${{ steps.stage.outputs.archives }}
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false

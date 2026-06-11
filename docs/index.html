@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="stryke-utils — pure-stryke utility belt. Six sublibraries (String / List / Hash / Num / Time / Path) of higher-level composites that aren't part of stryke core. No cdylib, no helper binary — just .stk modules loaded on `use Utils`.">
+  <title>stryke-utils — Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&amp;family=Share+Tech+Mono&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="hud-static.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <style>
+    .tutorial-main { max-width: 68rem; }
+    .docs-build-line {
+      margin: 0.35rem 0 0;
+      font-family: 'Share Tech Mono', ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.03em;
+      max-width: 42rem;
+      opacity: 0.75;
+    }
+    .hub-scheme-strip {
+      border-bottom: 1px dashed var(--border);
+      background: color-mix(in srgb, var(--bg-secondary) 85%, transparent);
+      padding: 0.55rem 1.5rem 0.65rem;
+      position: relative;
+    }
+    .hub-scheme-strip-inner {
+      max-width: 68rem;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+    .hub-scheme-strip .hud-scheme-label {
+      flex: 0 0 auto;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-align: left;
+    }
+    .hub-scheme-strip .scheme-grid {
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+    @media (max-width: 720px) {
+      .hub-scheme-strip-inner { flex-direction: column; align-items: stretch; }
+      .hub-scheme-strip .scheme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .sub-tbl { width: 100%; border-collapse: collapse; margin: 0.6rem 0; font-size: 12.5px; }
+    .sub-tbl th {
+      background: var(--bg-secondary);
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+    }
+    .sub-tbl td { padding: 6px 10px; border: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+    .sub-tbl td code { color: var(--accent-light); background: var(--bg); padding: 1px 4px; font-size: 11.5px; }
+    .sub-tbl td.mod-name { color: var(--green); font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+    .sub-tbl td.cnt { color: var(--yellow); text-align: right; font-family: 'Share Tech Mono', monospace; }
+  </style>
+</head>
+<body>
+  <div class="app tutorial-app" id="docsApp">
+    <div class="crt-scanline" id="crtH" aria-hidden="true"></div>
+    <div class="crt-scanline-v" id="crtV" aria-hidden="true"></div>
+
+    <header class="tutorial-header">
+      <div class="tutorial-header-inner">
+        <div>
+          <h1 class="tutorial-brand">// STRYKE-UTILS &mdash; PURE-STRYKE UTILITY BELT</h1>
+          <nav class="tutorial-crumbs" aria-label="Breadcrumb">
+            <span class="current">Docs</span>
+            <span class="sep">/</span>
+            <a href="report.html">Engineering report</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/stryke-utils" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/strykelang" target="_blank" rel="noopener noreferrer">strykelang</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta" target="_blank" rel="noopener noreferrer">Meta</a>
+          </nav>
+          <p class="docs-build-line">6 sublibraries &middot; ~119 composite functions &middot; zero builtin re-wraps &middot; no cdylib, no helper binary &middot; <code>use Utils</code> pulls everything in one pass</p>
+        </div>
+        <div class="tutorial-toolbar">
+          <button type="button" class="btn btn-secondary" id="btnTheme" title="Toggle light/dark">Theme</button>
+          <button type="button" class="btn btn-secondary active" id="btnCrt" title="CRT scanline overlay">CRT</button>
+          <button type="button" class="btn btn-secondary active" id="btnNeon" title="Neon border pulse">Neon</button>
+          <a class="btn btn-secondary" href="report.html">Report</a>
+          <a class="btn btn-secondary" href="https://github.com/MenkeTechnologies/stryke-utils" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="btn btn-secondary" href="https://github.com/MenkeTechnologies/stryke-utils/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="hub-scheme-strip">
+      <div class="hub-scheme-strip-inner">
+        <span class="hud-scheme-label">// Color scheme</span>
+        <div class="scheme-grid" id="hudSchemeGrid"></div>
+      </div>
+    </div>
+
+    <main class="tutorial-main">
+      <h2 class="tutorial-title"><span class="step-hash">&gt;_</span>STRYKE-UTILS</h2>
+      <p class="tutorial-subtitle"><strong>Composites only. No builtins re-wrapped.</strong> stryke-utils ships six sublibraries (<code>String</code>, <code>List</code>, <code>Hash</code>, <code>Num</code>, <code>Time</code>, <code>Path</code>) of higher-level helpers that aren't part of stryke core. Every function does work the language doesn't already do &mdash; <code>slugify</code>, <code>chunk</code>, <code>deep_merge</code>, <code>format_bytes</code>, <code>parse_duration</code>, <code>levenshtein</code>, <code>normalize</code> &mdash; never a 1-call wrapper around <code>uc</code>, <code>length</code>, <code>sort</code>, <code>time</code>, or <code>mkdir</code>. Pure stryke: no <code>[ffi]</code> table, no cdylib, no helper binary &mdash; just <code>.stk</code> modules loaded by stryke's normal package resolver.</p>
+
+      <section class="tutorial-section">
+        <h2>The 6 sublibraries</h2>
+        <table class="sub-tbl">
+          <thead>
+            <tr><th>#</th><th>Module</th><th>File</th><th>Fns</th><th>Highlights</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td class="mod-name">Utils::String</td><td><code>lib/String.stk</code></td><td class="cnt">43</td><td><code>trim</code> &middot; <code>slugify</code> &middot; <code>{snake,kebab,camel,pascal,title,swap}_case</code> &middot; <code>pad_{left,right,center}</code> &middot; <code>truncate</code> &middot; <code>strip_ansi</code>/<code>visible_width</code> &middot; <code>levenshtein</code>/<code>hamming</code>/<code>dice_coefficient</code> &middot; <code>common_{prefix,suffix}</code> &middot; <code>word_wrap</code> &middot; <code>indent</code>/<code>dedent</code> &middot; <code>partition</code>/<code>rpartition</code> &middot; <code>mask_middle</code> &middot; <code>escape_shell</code> &middot; <code>rot13</code> &middot; <code>is_blank</code>/<code>is_palindrome</code></td></tr>
+            <tr><td>2</td><td class="mod-name">Utils::List</td><td><code>lib/List.stk</code></td><td class="cnt">24</td><td><code>chunk</code> &middot; <code>uniq</code>/<code>uniq_by</code> &middot; <code>group_by</code> &middot; <code>count_by</code> &middot; <code>index_by</code> &middot; <code>partition</code> &middot; <code>flatten</code> &middot; <code>mean</code>/<code>median</code> &middot; <code>min_by</code>/<code>max_by</code>/<code>sort_by</code> &middot; <code>zip</code> &middot; set ops &middot; <code>range</code> &middot; <code>windows</code></td></tr>
+            <tr><td>3</td><td class="mod-name">Utils::Hash</td><td><code>lib/Hash.stk</code></td><td class="cnt">15</td><td><code>deep_merge</code>/<code>deep_merge_all</code> &middot; <code>pick</code>/<code>omit</code> &middot; <code>invert</code> &middot; <code>deep_get</code>/<code>deep_set</code>/<code>deep_has</code> (dot-path) &middot; <code>to_pairs</code>/<code>from_pairs</code> &middot; <code>map_keys</code>/<code>map_values</code>/<code>filter</code></td></tr>
+            <tr><td>4</td><td class="mod-name">Utils::Num</td><td><code>lib/Num.stk</code></td><td class="cnt">14</td><td><code>clamp</code> &middot; <code>between</code> &middot; <code>lerp</code> &middot; <code>round_to</code>/<code>round_to_multiple</code> &middot; <code>format_number</code> &middot; <code>format_bytes</code> (1024 + SI) &middot; <code>format_percent</code> &middot; <code>ordinal</code> &middot; <code>gcd</code>/<code>lcm</code></td></tr>
+            <tr><td>5</td><td class="mod-name">Utils::Time</td><td><code>lib/Time.stk</code></td><td class="cnt">10</td><td><code>format_duration</code> &middot; <code>parse_duration</code> &middot; <code>ago</code> (relative) &middot; <code>now_ms</code>/<code>now_us</code> &middot; <code>format_iso8601</code>/<code>format_date</code>/<code>format_time</code> &middot; <code>timed</code>/<code>elapsed</code></td></tr>
+            <tr><td>6</td><td class="mod-name">Utils::Path</td><td><code>lib/Path.stk</code></td><td class="cnt">13</td><td><code>ext</code>/<code>compound_ext</code> &middot; <code>without_ext</code>/<code>set_ext</code>/<code>splitext</code> &middot; <code>basename</code>/<code>dirname</code> &middot; <code>join</code> &middot; <code>normalize</code> &middot; <code>relative</code> &middot; <code>common_prefix</code></td></tr>
+          </tbody>
+        </table>
+        <p>Color legend: <span style="color:var(--green);font-weight:700">green = module name</span> &middot; <span style="color:var(--yellow)">yellow = function count</span>. Every sublibrary stands alone &mdash; no FFI, no required environment, no shared state between calls. Drop any single <code>lib/*.stk</code> file into another project as-is.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Install</h2>
+<pre># From a release:
+s pkg install -g github.com/MenkeTechnologies/stryke-utils
+
+# From a local checkout:
+git clone https://github.com/MenkeTechnologies/stryke-utils
+cd stryke-utils
+s pkg install -g .              # installs into ~/.stryke/store/utils@&lt;version&gt;/
+
+# Or via Makefile:
+make install</pre>
+        <p>No cargo step. No cdylib. The installed store directory contains only <code>stryke.toml</code> + <code>lib/*.stk</code> &mdash; no compiled artifacts, fully portable across platforms.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Quick Start</h2>
+<pre>use Utils                                      # pulls all six sublibraries
+
+# Strings
+Utils::String::slugify("Hello, World! 2026")    # "hello-world-2026"
+Utils::String::snake_case("HelloWorld")         # "hello_world"
+Utils::String::truncate("a long string", 8)     # "a long …"
+Utils::String::levenshtein("kitten", "sitting") # 3
+
+# Lists
+Utils::List::chunk([1..7], 3)                   # [[1,2,3],[4,5,6],[7]]
+Utils::List::uniq([3,1,2,1,3,4])                # [3,1,2,4]
+Utils::List::group_by(\@rows, sub ($r) { $r-&gt;{kind} })
+
+# Hashes
+my $cfg = Utils::Hash::deep_merge_all($defaults, $env, $runtime)
+Utils::Hash::deep_get($cfg, "db.pool.max")      # nested read by dot path
+
+# Numbers
+Utils::Num::format_bytes(1572864)               # "1.5 MiB"
+Utils::Num::format_number(1234567)              # "1,234,567"
+Utils::Num::format_percent(0.524)               # "52.4%"
+Utils::Num::ordinal(21)                         # "21st"
+
+# Time
+Utils::Time::format_duration(5400)              # "1h 30m"
+Utils::Time::parse_duration("1h30m")            # 5400
+Utils::Time::ago(time() - 90)                   # "1 minute ago"
+
+# Paths
+Utils::Path::compound_ext("archive.tar.gz")     # "tar.gz"
+Utils::Path::set_ext("a/b.csv", "parquet")      # "a/b.parquet"
+Utils::Path::normalize("/a/b/../c/./d")         # "/a/c/d"
+Utils::Path::relative("/a/x", "/a/b/c")         # "../../x"</pre>
+        <p>Pull only what you need with explicit sub-imports: <code>use Utils::String</code>, <code>use Utils::Path</code>, etc. The umbrella <code>use Utils</code> is just for convenience.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>What's NOT in Here</h2>
+        <p>By design &mdash; these are stryke builtins, so we don't re-wrap them. If a function in this library can be replaced with one builtin call, it's a bug.</p>
+        <table class="sub-tbl">
+          <thead><tr><th>Category</th><th>Builtins we deliberately skip</th></tr></thead>
+          <tbody>
+            <tr><td>String basics</td><td><code>uc</code> &middot; <code>lc</code> &middot; <code>ucfirst</code> &middot; <code>lcfirst</code> &middot; <code>length</code> &middot; <code>sprintf</code> &middot; <code>substr</code> &middot; <code>index</code> &middot; <code>split</code> &middot; the <code>x</code> repetition operator</td></tr>
+            <tr><td>Array primitives</td><td><code>push</code> &middot; <code>pop</code> &middot; <code>shift</code> &middot; <code>unshift</code> &middot; <code>splice</code> &middot; <code>sort</code> &middot; <code>reverse</code> &middot; <code>map</code> &middot; <code>grep</code> &middot; <code>join</code> &middot; <code>scalar</code> &middot; <code>wantarray</code> &middot; the <code>..</code> range op</td></tr>
+            <tr><td>Hash primitives</td><td><code>keys</code> &middot; <code>values</code> &middot; <code>exists</code> &middot; <code>defined</code> &middot; <code>delete</code> &middot; <code>each</code></td></tr>
+            <tr><td>Math</td><td><code>abs</code> &middot; <code>int</code> &middot; <code>sqrt</code> &middot; <code>sin</code> &middot; <code>cos</code> &middot; <code>log</code> &middot; <code>exp</code></td></tr>
+            <tr><td>Time / system</td><td><code>time</code> &middot; <code>localtime</code> &middot; <code>gmtime</code> &middot; <code>sleep</code></td></tr>
+            <tr><td>Filesystem</td><td><code>mkdir</code> &middot; <code>unlink</code> &middot; <code>rmdir</code> &middot; <code>opendir</code> &middot; <code>readdir</code> &middot; the <code>-e</code>/<code>-d</code>/<code>-f</code>/<code>-s</code> file tests</td></tr>
+            <tr><td>Serialization</td><td><code>to_json</code> &middot; <code>from_json</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>CLI</h2>
+<pre>s bin/utils.stk slugify "Hello, World!"        # hello-world
+s bin/utils.stk snake "HelloWorld"             # hello_world
+s bin/utils.stk truncate "long string here" 8  # long st…
+s bin/utils.stk bytes 1572864                  # 1.5 MiB
+s bin/utils.stk number 1234567.89              # 1,234,567.89
+s bin/utils.stk duration 5400                  # 1h 30m
+s bin/utils.stk parse-duration 1h30m           # 5400
+s bin/utils.stk iso                            # 2026-06-10T14:23:05Z
+s bin/utils.stk compound-ext archive.tar.gz    # tar.gz
+s bin/utils.stk normalize a/./b/../c           # a/c
+s bin/utils.stk help</pre>
+        <p><code>bin/utils.stk</code> is a thin dispatcher over the public functions &mdash; useful for shell pipelines without writing a full <code>.stk</code> file.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Tests</h2>
+<pre>s test t/                       # ~150 assertions across all six sublibs</pre>
+        <p><code>t/test_utils.stk</code> covers every public function with at least one round-trip / boundary assertion and exits TAP-style via <code>test_run</code>.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Layout</h2>
+<pre>stryke-utils/
+&#9500;&#9472;&#9472; stryke.toml                # pure-stryke package manifest (no [ffi])
+&#9500;&#9472;&#9472; Makefile                   # test / install / clean
+&#9500;&#9472;&#9472; LICENSE                    # MIT
+&#9500;&#9472;&#9472; lib/
+&#9474;   &#9500;&#9472;&#9472; Utils.stk              # `use Utils` &mdash; pulls all six sublibs
+&#9474;   &#9500;&#9472;&#9472; String.stk             # `use Utils::String` &mdash; 43 fns
+&#9474;   &#9500;&#9472;&#9472; List.stk               # `use Utils::List`   &mdash; 24 fns
+&#9474;   &#9500;&#9472;&#9472; Hash.stk               # `use Utils::Hash`   &mdash; 15 fns
+&#9474;   &#9500;&#9472;&#9472; Num.stk                # `use Utils::Num`    &mdash; 14 fns
+&#9474;   &#9500;&#9472;&#9472; Time.stk               # `use Utils::Time`   &mdash; 10 fns
+&#9474;   &#9492;&#9472;&#9472; Path.stk               # `use Utils::Path`   &mdash; 13 fns
+&#9500;&#9472;&#9472; bin/
+&#9474;   &#9492;&#9472;&#9472; utils.stk              # CLI front-end
+&#9500;&#9472;&#9472; t/
+&#9474;   &#9492;&#9472;&#9472; test_utils.stk         # all-surface assertions
+&#9500;&#9472;&#9472; examples/
+&#9474;   &#9500;&#9472;&#9472; discover.stk           # one call per sublib
+&#9474;   &#9500;&#9472;&#9472; word_frequency.stk     # String + List + Hash + Num pipeline
+&#9474;   &#9492;&#9472;&#9472; config_merge.stk       # layered config via deep_merge_all
+&#9500;&#9472;&#9472; tests/                     # shell gate scripts (CI lints)
+&#9492;&#9472;&#9472; docs/                      # this site (GitHub Pages)</pre>
+      </section>
+
+    </main>
+  </div>
+  <script src="hud-theme.js"></script>
+</body>
+</html>

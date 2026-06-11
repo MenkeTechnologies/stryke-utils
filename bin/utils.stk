@@ -1,0 +1,137 @@
+#!/usr/bin/env stryke
+# bin/utils.stk — CLI front-end for the stryke `Utils` package.
+#
+# Pure stryke — no helper binary involved. Every subcommand routes to a
+# function in lib/{String,List,Hash,Num,Time,Path}.stk.
+#
+# Subcommands:
+#   utils slugify "Hello, World!"
+#   utils snake "HelloWorld"
+#   utils kebab "Hello World"
+#   utils camel "hello world"
+#   utils pascal "hello world"
+#   utils trim   "   hello   "
+#   utils truncate "long string here" 8
+#   utils bytes 1572864                    # 1.5 MiB
+#   utils number 1234567.89
+#   utils percent 0.524
+#   utils duration 5400                    # 1h 30m
+#   utils ago $((now - 90))                # 1 minute ago
+#   utils iso  $now
+#   utils ext  path/file.tar.gz
+#   utils basename /a/b/c.txt
+#   utils dirname  /a/b/c.txt
+#   utils normalize a/./b/../c
+#   utils version
+#   utils help
+
+my @_p = split "/", __FILE__
+pop @_p
+pop @_p
+require join("/", @_p) . "/lib/Utils.stk"
+
+use Utils
+
+fn Utils::CLI::usage {
+    p "usage: utils <subcommand> [args]"
+    p ""
+    p "String:"
+    p "  slugify STR"
+    p "  snake | kebab | camel | pascal | title STR"
+    p "  trim STR"
+    p "  truncate STR MAX [ELLIPSIS]"
+    p "Num:"
+    p "  bytes N            # 1572864 -> 1.5 MiB"
+    p "  number N [SEP]"
+    p "  percent N [PLACES] # 0.524 -> 52.4%"
+    p "  ordinal N"
+    p "Time:"
+    p "  duration SECS      # 5400 -> 1h 30m"
+    p "  parse-duration STR # 1h30m -> 5400"
+    p "  ago EPOCH"
+    p "  iso  [EPOCH]"
+    p "Path:"
+    p "  ext PATH"
+    p "  compound-ext PATH"
+    p "  without-ext PATH"
+    p "  basename PATH"
+    p "  dirname  PATH"
+    p "  normalize PATH"
+    p ""
+    p "  version"
+    p "  help"
+}
+
+my @argv = @ARGV
+if (@argv == 0) {
+    Utils::CLI::usage()
+    exit 1
+}
+my $sub = shift @argv
+
+if ($sub eq "help" || $sub eq "-h" || $sub eq "--help") {
+    Utils::CLI::usage()
+    exit 0
+} elsif ($sub eq "version") {
+    p Utils::version()
+
+# ── string ─────────────────────────────────────────────────────────
+} elsif ($sub eq "slugify") {
+    die "utils slugify: missing STR\n" unless @argv >= 1
+    p Utils::String::slugify($argv[0])
+} elsif ($sub eq "snake") {
+    p Utils::String::snake_case($argv[0])
+} elsif ($sub eq "kebab") {
+    p Utils::String::kebab_case($argv[0])
+} elsif ($sub eq "camel") {
+    p Utils::String::camel_case($argv[0])
+} elsif ($sub eq "pascal") {
+    p Utils::String::pascal_case($argv[0])
+} elsif ($sub eq "title") {
+    p Utils::String::title_case($argv[0])
+} elsif ($sub eq "trim") {
+    p Utils::String::trim($argv[0])
+} elsif ($sub eq "truncate") {
+    die "utils truncate: missing STR MAX\n" unless @argv >= 2
+    val $ell = @argv >= 3 ? $argv[2] : "…"
+    p Utils::String::truncate($argv[0], $argv[1] + 0, $ell)
+
+# ── num ────────────────────────────────────────────────────────────
+} elsif ($sub eq "bytes") {
+    p Utils::Num::format_bytes($argv[0] + 0)
+} elsif ($sub eq "number") {
+    val $sep = @argv >= 2 ? $argv[1] : ","
+    p Utils::Num::format_number($argv[0], $sep)
+} elsif ($sub eq "percent") {
+    val $places = @argv >= 2 ? $argv[1] + 0 : 1
+    p Utils::Num::format_percent($argv[0] + 0, $places)
+} elsif ($sub eq "ordinal") {
+    p Utils::Num::ordinal($argv[0] + 0)
+
+# ── time ───────────────────────────────────────────────────────────
+} elsif ($sub eq "duration") {
+    p Utils::Time::format_duration($argv[0] + 0)
+} elsif ($sub eq "parse-duration") {
+    p Utils::Time::parse_duration($argv[0])
+} elsif ($sub eq "ago") {
+    p Utils::Time::ago($argv[0] + 0)
+} elsif ($sub eq "iso") {
+    p Utils::Time::format_iso8601(@argv >= 1 ? $argv[0] + 0 : undef)
+
+# ── path ───────────────────────────────────────────────────────────
+} elsif ($sub eq "ext") {
+    p Utils::Path::ext($argv[0])
+} elsif ($sub eq "compound-ext") {
+    p Utils::Path::compound_ext($argv[0])
+} elsif ($sub eq "without-ext") {
+    p Utils::Path::without_ext($argv[0])
+} elsif ($sub eq "basename") {
+    p Utils::Path::basename($argv[0])
+} elsif ($sub eq "dirname") {
+    p Utils::Path::dirname($argv[0])
+} elsif ($sub eq "normalize") {
+    p Utils::Path::normalize($argv[0])
+
+} else {
+    die "utils: unknown subcommand `$sub` (try `utils help`)\n"
+}

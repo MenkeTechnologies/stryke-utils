@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="stryke-utils — engineering report. Sublibrary boundaries, builtin-exclusion contract, dot-path conventions, test surface, and how the package stays pure-stryke (no cdylib).">
+  <title>stryke-utils — Engineering Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&amp;family=Share+Tech+Mono&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="hud-static.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <style>
+    .tutorial-main { max-width: 68rem; }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    .stat-card {
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--cyan);
+      padding: 0.65rem 0.85rem;
+      background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+      border-radius: 2px;
+    }
+    .stat-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-val.cyan { color: var(--cyan); }
+    .stat-val.green { color: var(--green); }
+    .stat-val.yellow { color: var(--yellow); }
+    .stat-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+    }
+    .arch-table { width: 100%; border-collapse: collapse; margin: 0.6rem 0; font-size: 12.5px; }
+    .arch-table th {
+      background: var(--bg-secondary);
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+    }
+    .arch-table td { padding: 6px 10px; border: 1px solid var(--border); color: var(--text-dim); vertical-align: top; }
+    .arch-table td code { color: var(--accent-light); background: var(--bg); padding: 1px 4px; }
+    .section-rule { border: 0; border-top: 1px dashed var(--border); margin: 2rem 0 1.5rem; }
+  </style>
+</head>
+<body>
+  <div class="app tutorial-app" id="reportApp">
+    <div class="crt-scanline" id="crtH" aria-hidden="true"></div>
+    <div class="crt-scanline-v" id="crtV" aria-hidden="true"></div>
+
+    <header class="tutorial-header">
+      <div class="tutorial-header-inner">
+        <div>
+          <h1 class="tutorial-brand">// STRYKE-UTILS &mdash; ENGINEERING REPORT</h1>
+          <nav class="tutorial-crumbs" aria-label="Breadcrumb">
+            <span class="current">Engineering Report</span>
+            <span class="sep">/</span>
+            <a href="index.html">Docs</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/stryke-utils" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/strykelang" target="_blank" rel="noopener noreferrer">strykelang</a>
+          </nav>
+          <p style="margin:0.35rem 0 0;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:0.03em;opacity:0.75;">
+            Six sublibs &middot; ~119 composite fns &middot; zero builtin re-wraps &middot; pure stryke (no <code>[ffi]</code>, no cdylib) &middot; <code>use Utils</code> pulls all
+          </p>
+        </div>
+        <div class="tutorial-toolbar">
+          <button type="button" class="btn btn-secondary" id="btnTheme" title="Toggle light/dark">Theme</button>
+          <button type="button" class="btn btn-secondary active" id="btnCrt" title="CRT scanline overlay">CRT</button>
+          <button type="button" class="btn btn-secondary active" id="btnNeon" title="Neon border pulse">Neon</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="tutorial-main">
+
+      <h2 class="tutorial-title"><span class="step-hash">&gt;_</span>EXECUTIVE SUMMARY</h2>
+      <p class="tutorial-subtitle"><strong>stryke-utils</strong> is the higher-level standard library for stryke &mdash; the layer sitting above builtins and below domain packages like <code>stryke-arrow</code> / <code>stryke-postgres</code>. Six sublibraries cover the composites every application code path eventually needs: case conversion, slugification, distance metrics, set operations on lists, deep merge and dot-path access on hashes, human-readable byte/duration/percent formatting, and lexical path arithmetic. The package is intentionally pure stryke &mdash; no <code>[ffi]</code> table, no cdylib, no helper binary &mdash; so the install is a copy of seven <code>.stk</code> files and works identically on every target stryke runs on.</p>
+      <p class="tutorial-subtitle">The single contract that drives every design decision is the <strong>no-builtin-rewrap rule</strong>: if a function in this library can be replaced with one builtin call (<code>uc</code>, <code>length</code>, <code>sort</code>, <code>keys</code>, <code>time</code>, <code>mkdir</code>, ...) it's a bug. That keeps the surface focused on real work and prevents the library from accumulating the indistinguishable sub-builtins (<code>str_upper</code>, <code>arr_length</code>, ...) that bloat lodash/underscore-class libraries in other ecosystems.</p>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-val">6</div><div class="stat-label">sublibraries</div></div>
+        <div class="stat-card"><div class="stat-val cyan">119</div><div class="stat-label">composite fns</div></div>
+        <div class="stat-card"><div class="stat-val green">0</div><div class="stat-label">cdylib / helper binaries</div></div>
+        <div class="stat-card"><div class="stat-val yellow">~150</div><div class="stat-label">assertions in t/</div></div>
+        <div class="stat-card"><div class="stat-val">3</div><div class="stat-label">runnable examples</div></div>
+        <div class="stat-card"><div class="stat-val cyan">22</div><div class="stat-label">CI gate scripts</div></div>
+      </div>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">~</span>SUBLIBRARY BOUNDARIES</h2>
+      <p class="tutorial-subtitle">Each sublibrary owns one shape of input. The split is by primitive type (string / list / hash / number / time / path) rather than by intent (formatting / parsing / validation / ...) so users can find a function from its input type alone.</p>
+      <table class="arch-table">
+        <thead><tr><th>Sublib</th><th>Owns inputs of type</th><th>Doesn't own</th></tr></thead>
+        <tbody>
+          <tr><td><code>Utils::String</code></td><td>Scalar strings &mdash; case, slug, padding, ANSI strip, distance metrics, word wrap.</td><td>Anything that produces a non-string return that isn't a count (e.g. a parsed date &rarr; <code>Utils::Time</code>).</td></tr>
+          <tr><td><code>Utils::List</code></td><td>Arrayrefs &mdash; grouping, chunking, set ops, statistics, projections.</td><td>Single-element ops (those collapse to builtins). Sorting helpers (<code>sort_by</code>) only when they wrap the Schwartzian transform.</td></tr>
+          <tr><td><code>Utils::Hash</code></td><td>Hashrefs &mdash; merging, projection, dot-path read/write, invert, pairs round-trip.</td><td>Hash iteration helpers (<code>keys</code>, <code>each</code>) &mdash; builtin.</td></tr>
+          <tr><td><code>Utils::Num</code></td><td>Numeric scalars &mdash; clamping, rounding, human formatting, number-theoretic helpers (<code>gcd</code>/<code>lcm</code>).</td><td>Arithmetic &mdash; builtin operators. Trig &mdash; <code>sin</code>/<code>cos</code> are builtin.</td></tr>
+          <tr><td><code>Utils::Time</code></td><td>Epoch ints + duration strings &mdash; format, parse, relative phrasing, ISO-8601, timing.</td><td>Timezone arithmetic, calendar math beyond strftime-equivalents (out of scope).</td></tr>
+          <tr><td><code>Utils::Path</code></td><td>Filesystem path <strong>strings</strong> &mdash; ext / dirname / join / normalize / relative / common-prefix.</td><td>FS I/O &mdash; <code>mkdir</code>, <code>unlink</code>, <code>opendir</code>, <code>-e</code>/<code>-d</code>/<code>-f</code>/<code>-s</code> are all builtins. We never touch the disk.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">$</span>NO-BUILTIN-REWRAP CONTRACT</h2>
+      <p class="tutorial-subtitle">The single rule that shapes every decision: <strong>if a function here can be replaced with one builtin call, it's a bug.</strong> Concretely, the following are explicitly OUT of scope:</p>
+      <table class="arch-table">
+        <thead><tr><th>Category</th><th>Builtins skipped</th></tr></thead>
+        <tbody>
+          <tr><td>String basics</td><td><code>uc</code> &middot; <code>lc</code> &middot; <code>ucfirst</code> &middot; <code>lcfirst</code> &middot; <code>length</code> &middot; <code>sprintf</code> &middot; <code>substr</code> &middot; <code>index</code> &middot; <code>split</code> &middot; <code>x</code> repetition operator</td></tr>
+          <tr><td>Array primitives</td><td><code>push</code> &middot; <code>pop</code> &middot; <code>shift</code> &middot; <code>unshift</code> &middot; <code>splice</code> &middot; <code>sort</code> &middot; <code>reverse</code> &middot; <code>map</code> &middot; <code>grep</code> &middot; <code>join</code> &middot; <code>scalar</code> &middot; <code>wantarray</code> &middot; <code>..</code> range</td></tr>
+          <tr><td>Hash primitives</td><td><code>keys</code> &middot; <code>values</code> &middot; <code>exists</code> &middot; <code>defined</code> &middot; <code>delete</code> &middot; <code>each</code></td></tr>
+          <tr><td>Math</td><td><code>abs</code> &middot; <code>int</code> &middot; <code>sqrt</code> &middot; <code>sin</code> &middot; <code>cos</code> &middot; <code>log</code> &middot; <code>exp</code></td></tr>
+          <tr><td>Time / system</td><td><code>time</code> &middot; <code>localtime</code> &middot; <code>gmtime</code> &middot; <code>sleep</code></td></tr>
+          <tr><td>Filesystem</td><td><code>mkdir</code> &middot; <code>unlink</code> &middot; <code>rmdir</code> &middot; <code>opendir</code> &middot; <code>readdir</code> &middot; <code>-e</code>/<code>-d</code>/<code>-f</code>/<code>-s</code></td></tr>
+          <tr><td>Serialization</td><td><code>to_json</code> &middot; <code>from_json</code></td></tr>
+        </tbody>
+      </table>
+      <p>This is enforced by review &mdash; not by an automated linter (the rule is qualitative, not syntactic). If a function looks like a builtin alias to a reviewer, it gets removed.</p>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">&amp;</span>DOT-PATH CONVENTION</h2>
+      <p class="tutorial-subtitle"><code>Utils::Hash::deep_get</code> / <code>deep_set</code> / <code>deep_has</code> use a dot-path syntax (e.g. <code>"db.pool.max"</code>) for nested traversal. Tradeoffs:</p>
+      <table class="arch-table">
+        <thead><tr><th>Choice</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Strings, not arrayrefs</td><td>Configuration files (YAML/TOML/JSON) read into stryke as nested hashrefs; their access patterns are routinely string-keyed. <code>deep_get(\%cfg, "db.pool.max")</code> reads naturally; <code>deep_get(\%cfg, ["db","pool","max"])</code> is heavier for the common case.</td></tr>
+          <tr><td>Dot as separator</td><td>Matches Lodash, jq, JSONPath, Vue computed-watcher syntax. Period is the universal nested-access separator outside of Perl/Lisp lineage. Users moving between languages don't have to re-learn.</td></tr>
+          <tr><td>No escape for literal dots</td><td>Keeps the implementation a 5-line <code>split /\./</code>. If a key literally contains a dot, the user wants <code>$h-&gt;{"key.with.dots"}</code> directly &mdash; deep_get is for shapes that nest, not flat single-key reads.</td></tr>
+          <tr><td><code>deep_set</code> autovivifies</td><td>Matches <code>$h-&gt;{a}{b}{c} = $v</code> behavior in Perl &mdash; you'd expect a setter to create intermediate hashes if missing. Returns the modified <code>$h</code> for chaining.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">/</span>WHY PURE STRYKE (NO CDYLIB)</h2>
+      <p>Compare against <code>stryke-arrow</code>, which ships a Rust cdylib for the arrow-rs FFI. The cost of a cdylib package:</p>
+      <ul>
+        <li>Per-target release artifacts (x86_64-linux, aarch64-linux, x86_64-darwin, aarch64-darwin &mdash; minimum four).</li>
+        <li>A release pipeline that has to build, sign, and upload each.</li>
+        <li>Install-side toolchain (cargo, rustc) when there's no prebuilt for the user's triple.</li>
+        <li>A non-trivial unwind across the FFI boundary on every call &mdash; allocator, error encoding, JSON serialize / deserialize at the wire.</li>
+      </ul>
+      <p>For <code>stryke-utils</code>, that's all dead weight. <code>slugify</code> doesn't get faster in Rust because it's already O(n) in the input string and the JSON round-trip would dwarf the work. Same for <code>deep_merge</code>, <code>format_bytes</code>, <code>normalize</code>, etc. Pure stryke means:</p>
+      <ul>
+        <li><strong>One install path, every platform.</strong> Tarball with seven <code>.stk</code> files; works on anything stryke runs on.</li>
+        <li><strong>Same source as runtime.</strong> Debug a function by reading the file at the install dir &mdash; no decompile, no inspector, no symbol resolution.</li>
+        <li><strong>Trivial to fork.</strong> Copy a single <code>lib/*.stk</code> into a project; it just works as long as its dependencies (only other Utils:: sublibs, never external) come with it.</li>
+        <li><strong>No release bottleneck.</strong> No matrix build, no per-triple QA, no "the linux-arm tarball broke" support load.</li>
+      </ul>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">#</span>TEST SURFACE</h2>
+      <p class="tutorial-subtitle"><code>t/test_utils.stk</code> uses stryke's native assertion library (<code>assert_eq</code>, <code>assert_match</code>, <code>assert_ok</code>, <code>assert_gt</code>) and exits TAP-style via <code>test_run</code>. Coverage shape:</p>
+      <table class="arch-table">
+        <thead><tr><th>Sublib</th><th>Assertion families covered</th></tr></thead>
+        <tbody>
+          <tr><td>String</td><td>trim variants, every case-conversion, slugify edge cases (trailing dashes, all-punctuation), pad alignment, truncate with custom ellipsis, ANSI strip + visible_width, predicates (<code>starts_with</code>/<code>ends_with</code>/<code>contains</code>), Levenshtein boundary cases (empty strings).</td></tr>
+          <tr><td>List</td><td>chunk boundary (uneven tail), uniq stability, group_by parity, partition split, compact preserves <code>0</code>/<code>"0"</code>, median (odd + even), zip stops at shortest, set ops, take/drop bounds.</td></tr>
+          <tr><td>Hash</td><td>deep_merge keeps + overrides + adds, pick skips missing keys, deep_get hit + miss, deep_set autovivifies, deep_has differentiates exists-undef from missing, pairs round-trip.</td></tr>
+          <tr><td>Num</td><td>clamp three regions, lerp, round_to + round_to_multiple, format_number (int + decimal), format_bytes (1024 + SI), ordinal teen cases (11th/12th/13th vs 21st/22nd/23rd), sign, parity, gcd/lcm.</td></tr>
+          <tr><td>Time</td><td>format_duration boundary (0s, 1d1h1m1s), parse_duration multi-unit, ago thresholds at minute/hour, ISO-8601 / date / time shape match, <code>timed</code> returns result pair.</td></tr>
+          <tr><td>Path</td><td>ext (none / single / compound), without_ext / set_ext / splitext round-trip, basename trailing-slash handling, dirname root case, normalize abs + rel + walk-above-root, relative descendant + cousin + same-path, common_prefix.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">%</span>CI GATES</h2>
+      <p>22 shell gate scripts in <code>tests/</code> are wired into <code>.github/workflows/ci.yml</code>. They lint the repo shape independently of stryke itself &mdash; so a CI failure is reproducible by running <code>bash tests/&lt;gate&gt;.sh</code> locally.</p>
+      <table class="arch-table">
+        <thead><tr><th>Bucket</th><th>Gates</th></tr></thead>
+        <tbody>
+          <tr><td>repo-contract</td><td>Pure-stryke (no <code>Cargo.toml</code>, no <code>[ffi]</code>). lib/ has exactly 7 files. Every sublib declares <code>package Utils::&lt;Name&gt;</code>. Examples shebang. <code>bin/utils.stk</code> shebang. Makefile has test/install/clean. LICENSE is MIT.</td></tr>
+          <tr><td>docs gates</td><td><code>&lt;h1&gt;</code> present, <code>&lt;body&gt;</code> tag, closing <code>&lt;/html&gt;</code>, no deprecated tags (<code>&lt;font&gt;</code>, <code>&lt;center&gt;</code>, ...), no inline event handlers, no placeholder hrefs, no plaintext <code>http://</code>, <code>target="_blank"</code> always paired with <code>rel="noopener noreferrer"</code>.</td></tr>
+          <tr><td>README gates</td><td>At least one shields.io badge, at least one h2 section, at least one https link, ends with final newline.</td></tr>
+          <tr><td>polish gates</td><td>Workflow files have no tabs (YAML), every tests/*.sh has +x and a bash shebang, man pages (if any) have synopsis section + final newline + no trailing whitespace.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">!</span>EXTENDING</h2>
+      <p>Adding a function to an existing sublib means three edits:</p>
+      <ol>
+        <li>Add the <code>fn Utils::&lt;Sub&gt;::name</code> implementation to <code>lib/&lt;Sub&gt;.stk</code> with a leading <code>##</code> docstring.</li>
+        <li>Add at least one <code>assert_eq</code> / <code>assert_ok</code> in <code>t/test_utils.stk</code>.</li>
+        <li>Mention it in the README sublib table and (if user-facing) <code>docs/index.html</code>'s sublibrary table.</li>
+      </ol>
+      <p>Adding a new sublib means: drop <code>lib/&lt;Name&gt;.stk</code> with <code>package Utils::&lt;Name&gt;</code>, add <code>use Utils::&lt;Name&gt;</code> to <code>lib/Utils.stk</code>, update <code>Utils::modules</code>, extend the README + docs tables, and bump the file count in <code>tests/repo-contract.sh</code>.</p>
+
+      <hr class="section-rule">
+      <h2 class="tutorial-title"><span class="step-hash">@</span>PROJECT METADATA</h2>
+      <table class="arch-table">
+        <thead><tr><th>Item</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>License</td><td>MIT</td></tr>
+          <tr><td>Author</td><td><a href="https://github.com/MenkeTechnologies" target="_blank" rel="noopener noreferrer">MenkeTechnologies</a></td></tr>
+          <tr><td>Repository</td><td><a href="https://github.com/MenkeTechnologies/stryke-utils" target="_blank" rel="noopener noreferrer">github.com/MenkeTechnologies/stryke-utils</a></td></tr>
+          <tr><td>Parent language</td><td><a href="https://github.com/MenkeTechnologies/strykelang" target="_blank" rel="noopener noreferrer">strykelang</a></td></tr>
+          <tr><td>Meta umbrella</td><td><a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta" target="_blank" rel="noopener noreferrer">MenkeTechnologiesMeta</a></td></tr>
+          <tr><td>Issues</td><td><a href="https://github.com/MenkeTechnologies/stryke-utils/issues" target="_blank" rel="noopener noreferrer">github.com/MenkeTechnologies/stryke-utils/issues</a></td></tr>
+        </tbody>
+      </table>
+
+    </main>
+  </div>
+  <script src="hud-theme.js"></script>
+</body>
+</html>
