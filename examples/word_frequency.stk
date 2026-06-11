@@ -1,7 +1,11 @@
 #!/usr/bin/env stryke
 # examples/word_frequency.stk — count word frequencies in a string and
-# print the top N, demonstrating a typical Utils::String + Utils::List +
-# Utils::Hash + Utils::Num pipeline.
+# print the top N.
+#
+# Most of this pipeline (trim, count_by, format_number, format_percent,
+# pad_right) now lives in stryke core — the `Utils` umbrella is still
+# loaded since it's the package's discovery surface, but the calls go to
+# builtins.
 #
 # Run:   s examples/word_frequency.stk
 
@@ -15,22 +19,22 @@ val $text = q{
 
 # Tokenize → lowercase → drop punctuation → drop empties.
 val @words = grep { length }
-             map  { Utils::String::trim(lc $_) =~ s/[^a-z']//gr }
+             map  { trim(lc $_) =~ s/[^a-z']//gr }
              split /\s+/, $text
 
 # Count occurrences, then sort by count desc.
-val $counts = Utils::List::count_by(\@words, sub ($w) { $w })
+val $counts = count_by(\@words, sub ($w) { $w })
 val @pairs  = sort { $counts->{$b} <=> $counts->{$a} || $a cmp $b }
               keys %$counts
 
 p "=== word frequency ==="
-p "total tokens : " . Utils::Num::format_number(scalar(@words))
-p "unique words : " . Utils::Num::format_number(scalar(@pairs))
+p "total tokens : " . format_number(scalar(@words))
+p "unique words : " . format_number(scalar(@pairs))
 p ""
 p "top 5:"
 for val $w (@pairs[0..4]) {
     val $n   = $counts->{$w}
-    val $pct = Utils::Num::format_percent($n / scalar(@words), 1)
+    val $pct = format_percent($n / scalar(@words), 1)
     p sprintf("  %s  %3d  %s",
-              Utils::String::pad_right($w, 12), $n, $pct)
+              pad_right($w, 12), $n, $pct)
 }

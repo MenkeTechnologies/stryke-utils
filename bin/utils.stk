@@ -2,28 +2,42 @@
 # bin/utils.stk — CLI front-end for the stryke `Utils` package.
 #
 # Pure stryke — no helper binary involved. Every subcommand routes to a
-# function in lib/{String,List,Hash,Num,Time,Path}.stk.
+# function in lib/{String,List,Hash,Num,Time,Path}.stk or to a stryke
+# builtin (for the convenience routes like `slugify`, `duration`,
+# `bytes`, etc. — those used to live in this package and got absorbed
+# into core).
 #
 # Subcommands:
-#   utils slugify "Hello, World!"
-#   utils snake "HelloWorld"
-#   utils kebab "Hello World"
-#   utils camel "hello world"
-#   utils pascal "hello world"
-#   utils trim   "   hello   "
-#   utils truncate "long string here" 8
-#   utils bytes 1572864                    # 1.5 MiB
-#   utils number 1234567.89
-#   utils percent 0.524
-#   utils duration 5400                    # 1h 30m
+#   utils pad-center "hi" 8 .              # ...hi...
+#   utils squeeze "aaabbc"                 # abc
+#   utils compact-ws "a   b\t c"           # a b c
+#   utils rpartition "a/b/c" /             # a/b / c
+#   utils mask 4111222233334444 4 4        # 4111********4444
+#   utils escape-shell "it's \$foo"
+#   utils expand-tabs "x\ty" 2             # x  y
+#   utils unwrap '"quoted"' '"'            # quoted
+#   utils visible-width $'\e[31mhi\e[0m'   # 2
+#   utils ordinal 21                       # 21st
+#   utils round-multiple 13 5              # 15
+#   utils parse-duration 1h30m             # 5400
 #   utils ago $((now - 90))                # 1 minute ago
-#   utils iso  $now
+#   utils iso  [$EPOCH]
+#   utils date [$EPOCH]
+#   utils time [$EPOCH]
 #   utils ext  path/file.tar.gz
-#   utils basename /a/b/c.txt
-#   utils dirname  /a/b/c.txt
-#   utils normalize a/./b/../c
+#   utils compound-ext path/file.tar.gz
+#   utils without-ext path/file.tar.gz
+#   utils set-ext a/b.csv parquet          # a/b.parquet
+#   utils normalize a/./b/../c             # a/c
+#   utils relative /a/x /a/b/c             # ../../x
+#   utils path-join /a b/ /c               # /a/b/c
 #   utils version
 #   utils help
+#
+# For the (formerly-in-this-package) builtins, call stryke directly:
+#   s -e 'print slugify($ARGV[0])' -- "Hello"
+#   s -e 'print format_bytes(1572864)'
+#   s -e 'print format_duration(5400)'
 
 my @_p = split "/", __FILE__
 pop @_p
@@ -36,30 +50,39 @@ fn Utils::CLI::usage {
     p "usage: utils <subcommand> [args]"
     p ""
     p "String:"
-    p "  slugify STR"
-    p "  snake | kebab | camel | pascal | title STR"
-    p "  trim STR"
-    p "  truncate STR MAX [ELLIPSIS]"
+    p "  pad-center STR WIDTH [CH]"
+    p "  squeeze STR"
+    p "  compact-ws STR"
+    p "  rpartition STR SEP"
+    p "  mask STR HEAD TAIL [CH]"
+    p "  escape-shell STR"
+    p "  expand-tabs STR [WIDTH]"
+    p "  unwrap STR PREFIX [SUFFIX]"
+    p "  visible-width STR"
     p "Num:"
-    p "  bytes N            # 1572864 -> 1.5 MiB"
-    p "  number N [SEP]"
-    p "  percent N [PLACES] # 0.524 -> 52.4%"
     p "  ordinal N"
+    p "  round-multiple X STEP"
     p "Time:"
-    p "  duration SECS      # 5400 -> 1h 30m"
     p "  parse-duration STR # 1h30m -> 5400"
     p "  ago EPOCH"
     p "  iso  [EPOCH]"
+    p "  date [EPOCH]"
+    p "  time [EPOCH]"
     p "Path:"
     p "  ext PATH"
     p "  compound-ext PATH"
     p "  without-ext PATH"
-    p "  basename PATH"
-    p "  dirname  PATH"
+    p "  set-ext PATH NEW_EXT"
     p "  normalize PATH"
+    p "  relative TARGET FROM"
+    p "  path-join PART [PART ...]"
     p ""
     p "  version"
     p "  help"
+    p ""
+    p "For stryke builtins (slugify, trim, format_bytes, format_duration,"
+    p "basename, dirname, levenshtein, …), call stryke directly:"
+    p "  s -e 'print slugify(\$ARGV[0])' -- \"Hello, World!\""
 }
 
 my @argv = @ARGV
@@ -76,47 +99,52 @@ if ($sub eq "help" || $sub eq "-h" || $sub eq "--help") {
     p Utils::version()
 
 # ── string ─────────────────────────────────────────────────────────
-} elsif ($sub eq "slugify") {
-    die "utils slugify: missing STR\n" unless @argv >= 1
-    p Utils::String::slugify($argv[0])
-} elsif ($sub eq "snake") {
-    p Utils::String::snake_case($argv[0])
-} elsif ($sub eq "kebab") {
-    p Utils::String::kebab_case($argv[0])
-} elsif ($sub eq "camel") {
-    p Utils::String::camel_case($argv[0])
-} elsif ($sub eq "pascal") {
-    p Utils::String::pascal_case($argv[0])
-} elsif ($sub eq "title") {
-    p Utils::String::title_case($argv[0])
-} elsif ($sub eq "trim") {
-    p Utils::String::trim($argv[0])
-} elsif ($sub eq "truncate") {
-    die "utils truncate: missing STR MAX\n" unless @argv >= 2
-    val $ell = @argv >= 3 ? $argv[2] : "…"
-    p Utils::String::truncate($argv[0], $argv[1] + 0, $ell)
+} elsif ($sub eq "pad-center") {
+    die "utils pad-center: missing STR WIDTH\n" unless @argv >= 2
+    val $ch = @argv >= 3 ? $argv[2] : " "
+    p Utils::String::pad_center($argv[0], $argv[1] + 0, $ch)
+} elsif ($sub eq "squeeze") {
+    p Utils::String::squeeze($argv[0])
+} elsif ($sub eq "compact-ws") {
+    p Utils::String::compact_whitespace($argv[0])
+} elsif ($sub eq "rpartition") {
+    die "utils rpartition: missing STR SEP\n" unless @argv >= 2
+    val ($before, $sep, $after) = Utils::String::rpartition($argv[0], $argv[1])
+    p "$before\t$sep\t$after"
+} elsif ($sub eq "mask") {
+    die "utils mask: missing STR HEAD TAIL\n" unless @argv >= 3
+    val $ch = @argv >= 4 ? $argv[3] : "*"
+    p Utils::String::mask_middle($argv[0], $argv[1] + 0, $argv[2] + 0, $ch)
+} elsif ($sub eq "escape-shell") {
+    p Utils::String::escape_shell($argv[0])
+} elsif ($sub eq "expand-tabs") {
+    val $w = @argv >= 2 ? $argv[1] + 0 : 4
+    p Utils::String::expand_tabs($argv[0], $w)
+} elsif ($sub eq "unwrap") {
+    die "utils unwrap: missing STR PREFIX\n" unless @argv >= 2
+    val $suf = @argv >= 3 ? $argv[2] : undef
+    p Utils::String::unwrap($argv[0], $argv[1], $suf)
+} elsif ($sub eq "visible-width") {
+    p Utils::String::visible_width($argv[0])
 
 # ── num ────────────────────────────────────────────────────────────
-} elsif ($sub eq "bytes") {
-    p Utils::Num::format_bytes($argv[0] + 0)
-} elsif ($sub eq "number") {
-    val $sep = @argv >= 2 ? $argv[1] : ","
-    p Utils::Num::format_number($argv[0], $sep)
-} elsif ($sub eq "percent") {
-    val $places = @argv >= 2 ? $argv[1] + 0 : 1
-    p Utils::Num::format_percent($argv[0] + 0, $places)
 } elsif ($sub eq "ordinal") {
     p Utils::Num::ordinal($argv[0] + 0)
+} elsif ($sub eq "round-multiple") {
+    die "utils round-multiple: missing X STEP\n" unless @argv >= 2
+    p Utils::Num::round_to_multiple($argv[0] + 0, $argv[1] + 0)
 
 # ── time ───────────────────────────────────────────────────────────
-} elsif ($sub eq "duration") {
-    p Utils::Time::format_duration($argv[0] + 0)
 } elsif ($sub eq "parse-duration") {
     p Utils::Time::parse_duration($argv[0])
 } elsif ($sub eq "ago") {
     p Utils::Time::ago($argv[0] + 0)
 } elsif ($sub eq "iso") {
     p Utils::Time::format_iso8601(@argv >= 1 ? $argv[0] + 0 : undef)
+} elsif ($sub eq "date") {
+    p Utils::Time::format_date(@argv >= 1 ? $argv[0] + 0 : undef)
+} elsif ($sub eq "time") {
+    p Utils::Time::format_time(@argv >= 1 ? $argv[0] + 0 : undef)
 
 # ── path ───────────────────────────────────────────────────────────
 } elsif ($sub eq "ext") {
@@ -125,12 +153,16 @@ if ($sub eq "help" || $sub eq "-h" || $sub eq "--help") {
     p Utils::Path::compound_ext($argv[0])
 } elsif ($sub eq "without-ext") {
     p Utils::Path::without_ext($argv[0])
-} elsif ($sub eq "basename") {
-    p Utils::Path::basename($argv[0])
-} elsif ($sub eq "dirname") {
-    p Utils::Path::dirname($argv[0])
+} elsif ($sub eq "set-ext") {
+    die "utils set-ext: missing PATH NEW_EXT\n" unless @argv >= 2
+    p Utils::Path::set_ext($argv[0], $argv[1])
 } elsif ($sub eq "normalize") {
     p Utils::Path::normalize($argv[0])
+} elsif ($sub eq "relative") {
+    die "utils relative: missing TARGET FROM\n" unless @argv >= 2
+    p Utils::Path::relative($argv[0], $argv[1])
+} elsif ($sub eq "path-join") {
+    p Utils::Path::join(@argv)
 
 } else {
     die "utils: unknown subcommand `$sub` (try `utils help`)\n"

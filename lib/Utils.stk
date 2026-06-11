@@ -5,15 +5,16 @@
 ## sublibrary so callers get the full surface without naming each one:
 ##
 ##   use Utils
-##   Utils::String::slugify("Hello, World!")
 ##   Utils::Hash::deep_get(\%cfg, "db.pool.max")
 ##   Utils::Path::compound_ext("archive.tar.gz")
+##   Utils::Time::parse_duration("1h30m")
 ##
-## Every function in this package is a *composite* — it does work that
-## isn't a one-call wrapper around a stryke builtin. Things stryke already
-## ships (`length`, `keys`, `sort`, `uc`, `sprintf`, `time`, `mkdir`,
-## `deep_merge`, `chunk`, `uniq`, `clamp`, `format_bytes`, `basename`, …)
-## are NOT re-exported here.
+## Every function in this package is a *composite* the language doesn't
+## already ship — cross-checked against `%b` at build time. Things stryke
+## now has as builtins (`slugify`, `trim`, `truncate`, `levenshtein`,
+## `chunk`, `uniq`, `deep_merge`, `pick`, `omit`, `clamp`, `format_bytes`,
+## `basename`, `common_prefix`, `now_ms`, `format_duration`, …) are NOT
+## re-exported here — call them directly.
 
 package Utils
 

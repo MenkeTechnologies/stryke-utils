@@ -12,11 +12,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![stryke](https://img.shields.io/badge/stryke-package-cyan.svg)](https://github.com/MenkeTechnologies/strykelang)
 
-### `[PURE-STRYKE UTILITY BELT // NO CDYLIB, NO HELPER BINARY]`
+### `[BOUNDARY HELPERS // EVERYTHING ELSE IS A STRYKE BUILTIN]`
 
-> *"Composites only — every function does work the language doesn't already do."*
+> *"42 composites the language doesn't already ship. Cross-checked against `%b` — zero overlap."*
 
-`stryke-utils` is a pure-stryke utility library: six sublibraries (`String`, `List`, `Hash`, `Num`, `Time`, `Path`) of higher-level composites that aren't part of stryke core. No `[ffi]` table, no cdylib, no helper binary — just `.stk` modules loaded on `use Utils`. Created by MenkeTechnologies.
+`stryke-utils` is a small pure-stryke utility library: six sublibraries (`String`, `List`, `Hash`, `Num`, `Time`, `Path`) of higher-level composites that aren't already in stryke core. No `[ffi]` table, no cdylib, no helper binary — just `.stk` modules loaded on `use Utils`. Created by MenkeTechnologies.
 
 ### [`strykelang`](https://github.com/MenkeTechnologies/strykelang) &middot; [`MenkeTechnologiesMeta`](https://github.com/MenkeTechnologies/MenkeTechnologiesMeta) · [`stryke-arrow`](https://github.com/MenkeTechnologies/stryke-arrow) · [`stryke-demo`](https://github.com/MenkeTechnologies/stryke-demo)
 
@@ -38,20 +38,23 @@
 
 ## [0x00] Why a Package, Not Core
 
-stryke core stays small on purpose — the daily-driver install is the
-shell + bytecode VM + the Perl-superset standard library. Higher-level
-composites (`slugify`, `deep_merge`, `format_bytes`, `parse_duration`,
-`levenshtein`, …) live outside core so they can iterate independently
-and stay opt-in.
+stryke core absorbed most of the obvious composites — `slugify`,
+`snake_case`, `truncate`, `levenshtein`, `chunk`, `uniq`, `group_by`,
+`deep_merge`, `pick`, `omit`, `clamp`, `format_bytes`, `format_duration`,
+`now_ms`, `basename`, `common_prefix`, and roughly seventy more landed
+in `%b`. This package shrunk in response. What's left here is the long
+tail: helpers that are still useful glue but live below the bar for core
+inclusion.
 
-| Tier | Properties | This package |
+| Tier | Properties | Examples |
 |---|---|---|
-| Core (~40 MB stryke) | builtins everyone needs everywhere | `length`, `keys`, `uc`, `sort`, `time`, `sprintf`, file tests, regex, async |
-| `stryke-utils` (opt-in) | composites: 1 call, multiple builtins worth of work | `slugify`, `chunk`, `deep_merge`, `format_bytes`, `format_duration`, `levenshtein` |
+| stryke core (`%b`, 10k+ entries) | builtins everyone needs everywhere | `length`, `keys`, `uc`, `sort`, `time`, `sprintf`, `slugify`, `chunk`, `deep_merge`, `format_bytes`, `levenshtein`, `basename`, … |
+| `stryke-utils` (opt-in, 42 fns) | path-aware variants, n-ary wrappers, regex composites, the long tail | `deep_merge_all`, `parse_duration`, `compound_ext`, `round_to_multiple`, `pad_center`, `escape_shell`, `mask_middle`, `unwrap`, `windows`, `difference`/`intersection`/`union` |
 
-Every function in this repo is a *composite* — it does something you'd
-otherwise write 3-10 lines of stryke for. We do not ship aliases over
-stryke builtins.
+Every function in this repo is cross-checked against `%b` at build time
+— zero name collisions with builtins. The two exceptions, `Utils::Path::join`
+and `Utils::Path::normalize`, are intentionally distinct: stryke's `join`
+is the array builtin and stryke's `normalize` is a vector op.
 
 ## [0x01] Install
 
@@ -80,105 +83,131 @@ No cargo step. No cdylib. The store directory ends up containing
 ## [0x02] Quick Start
 
 ```perl
-use Utils                                      # pulls all six sublibraries
+use Utils                                       # pulls all six sublibraries
 
-# Strings
-Utils::String::slugify("Hello, World! 2026")    # "hello-world-2026"
-Utils::String::snake_case("HelloWorld")         # "hello_world"
-Utils::String::truncate("a long string", 8)     # "a long …"
-Utils::String::levenshtein("kitten", "sitting") # 3
+# Strings — composites that aren't in core
+Utils::String::ltrim("   hello")                # "hello"
+Utils::String::pad_center("hi", 8, ".")         # "...hi..."
+Utils::String::squeeze("aaabbc")                # "abc"
+Utils::String::compact_whitespace("a   b\t c")  # "a b c"
+Utils::String::rpartition("a/b/c", "/")         # ("a/b", "/", "c")
+Utils::String::mask_middle("4111222233334444", 4, 4)  # "4111********4444"
+Utils::String::escape_shell("it's \$foo")       # "'it'\\''s \$foo'"
+Utils::String::unwrap('"quoted"', '"')          # "quoted"
 
-# Lists — set ops + sliding windows (chunk/uniq/group_by are builtins)
+# Lists — set ops + sliding windows
 Utils::List::difference([1,2,3,4], [2,4])       # [1,3]
 Utils::List::intersection([1,2,3], [2,3,5])     # [2,3]
+Utils::List::union([1,2], [2,3])                # [1,2,3]
 Utils::List::windows([1,2,3,4], 2)              # [[1,2],[2,3],[3,4]]
 
-# Hashes — n-ary merge + dot-path access (deep_merge/pick/omit are builtins)
+# Hashes — variadic merge + dot-path access
 my $cfg = Utils::Hash::deep_merge_all(
     $defaults, $from_env, $runtime)
 Utils::Hash::deep_get($cfg, "db.pool.max")      # nested read by dot path
+Utils::Hash::deep_set($cfg, "db.pool.min", 5)   # autovivifying write
 Utils::Hash::deep_has($cfg, "db.pool.min")      # missing-vs-undef differentiator
 
-# Numbers — ordinal + round-to-multiple (clamp/format_bytes/format_number are builtins)
+# Numbers — long tail
 Utils::Num::ordinal(21)                         # "21st"
 Utils::Num::round_to_multiple(13, 5)            # 15
 
-# Time — duration parsing + relative phrasing (now_ms/format_duration are builtins)
+# Time — parsing + relative phrasing + ISO formatting
 Utils::Time::parse_duration("1h30m")            # 5400
 Utils::Time::ago(time() - 90)                   # "1 minute ago"
 Utils::Time::format_iso8601()                   # "2026-06-10T14:23:05Z"
 
-# Paths — path-string arithmetic (basename/common_prefix are builtins)
+# Paths — string-only path arithmetic
 Utils::Path::compound_ext("archive.tar.gz")     # "tar.gz"
 Utils::Path::set_ext("a/b.csv", "parquet")      # "a/b.parquet"
 Utils::Path::normalize("/a/b/../c/./d")         # "/a/c/d"
 Utils::Path::relative("/a/x", "/a/b/c")         # "../../x"
+Utils::Path::join("/a", "b/", "/c")             # "/a/b/c"
 ```
+
+For everything else — `slugify`, `chunk`, `uniq`, `deep_merge`,
+`format_bytes`, `levenshtein`, `basename`, … — just call the stryke
+builtin directly. No wrapper indirection.
 
 Pull only what you need:
 
 ```perl
-use Utils::String
 use Utils::Path
+use Utils::Time
 
-Utils::String::slugify("…")
-Utils::Path::normalize("…")
+Utils::Path::compound_ext("a.tar.gz")
+Utils::Time::parse_duration("90m")
 ```
 
 ## [0x03] Sublibraries
 
-| Module | `use` | Highlights |
-|---|---|---|
-| String | `use Utils::String` | `trim`/`ltrim`/`rtrim`, `slugify`, `{snake,kebab,camel,pascal,title}_case`, `swap_case`, `pad_{left,right,center}`, `truncate`, `strip_ansi`, `visible_width`, `starts_with`, `ends_with`, `contains`, `count_occurrences`, `find_all_indices`, `levenshtein`, `hamming`, `dice_coefficient`, `common_prefix`, `common_suffix`, `word_wrap`, `indent`, `dedent`, `squeeze`, `compact_whitespace`, `partition`/`rpartition`, `between`, `chunks`, `mask_middle`, `escape_shell`, `expand_tabs`, `rot13`, `unwrap`, `is_blank`, `is_palindrome`, `reverse_chars` |
-| List   | `use Utils::List`   | `difference`, `intersection`, `union`, `windows` |
-| Hash   | `use Utils::Hash`   | `deep_merge_all`, `deep_get`, `deep_set`, `deep_has`, `map_keys`, `map_values`, `all_hashes` |
-| Num    | `use Utils::Num`    | `round_to_multiple`, `ordinal` |
-| Time   | `use Utils::Time`   | `parse_duration`, `ago`, `format_iso8601`, `format_date`, `format_time`, `timed` |
-| Path   | `use Utils::Path`   | `ext`, `compound_ext`, `without_ext`, `set_ext`, `splitext`, `join`, `normalize`, `is_absolute`, `is_bare`, `relative` |
+| Module | `use` | fns | Surface |
+|---|---|---|---|
+| String | `use Utils::String` | 13 | `ltrim` &middot; `rtrim` &middot; `pad_center` &middot; `visible_width` &middot; `count_occurrences` &middot; `reverse_chars` &middot; `squeeze` &middot; `compact_whitespace` &middot; `rpartition` &middot; `mask_middle` &middot; `escape_shell` &middot; `expand_tabs` &middot; `unwrap` |
+| List   | `use Utils::List`   | 4  | `difference` &middot; `intersection` &middot; `union` &middot; `windows` |
+| Hash   | `use Utils::Hash`   | 7  | `deep_merge_all` &middot; `deep_get` &middot; `deep_set` &middot; `deep_has` &middot; `map_keys` &middot; `map_values` &middot; `all_hashes` |
+| Num    | `use Utils::Num`    | 2  | `round_to_multiple` &middot; `ordinal` |
+| Time   | `use Utils::Time`   | 6  | `parse_duration` &middot; `ago` &middot; `format_iso8601` &middot; `format_date` &middot; `format_time` &middot; `timed` |
+| Path   | `use Utils::Path`   | 10 | `ext` &middot; `compound_ext` &middot; `without_ext` &middot; `set_ext` &middot; `splitext` &middot; `join` &middot; `normalize` &middot; `is_absolute` &middot; `is_bare` &middot; `relative` |
 
-Every sublibrary stands alone — no FFI, no required environment, no
-state between calls. You can copy a single `lib/*.stk` file out of this
-repo and drop it into another project as long as its dependencies (only
-ever sibling sublibs, never external) come with it.
+42 functions total. Every sublibrary stands alone — no FFI, no required
+environment, no state between calls. Drop a single `lib/*.stk` into
+another project and it works.
 
 ## [0x04] What's NOT in Here
 
-By design — these are stryke builtins, so we don't re-wrap them. The
-list grows every stryke release as more composites land in core:
+By design — these are stryke builtins, so we don't re-wrap them. Every
+omission below was present in `stryke-utils` at one point and got
+deleted when the corresponding builtin landed in core:
 
-* **String** — `uc`, `lc`, `ucfirst`, `lcfirst`, `length`, `sprintf`, `substr`, `index`, `split`
-* **List** — `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `map`, `grep`, `join`, `scalar`, `wantarray`, `chunk`, `uniq`, `uniq_by`, `group_by`, `count_by`, `index_by`, `partition`, `compact`, `pluck`, `flatten`, `sum`, `mean`, `median`, `min_by`, `max_by`, `sort_by`, `zip`, `range`, `take`, `drop`
-* **Hash** — `keys`, `values`, `exists`, `delete`, `each`, `deep_merge`, `invert`, `filter`, `pick`, `omit`, `to_pairs`, `from_pairs`, `is_empty`
-* **Num** — `abs`, `int`, `sqrt`, `clamp`, `between`, `lerp`, `round_to`, `format_number`, `format_bytes`, `format_percent`, `sign`, `is_even`, `is_odd`, `gcd`, `lcm`
-* **Time** — `time`, `localtime`, `gmtime`, `sleep`, `now_ms`, `now_us`, `elapsed`, `format_duration`
-* **Path** — `basename`, `dirname`, `common_prefix`, `mkdir`, `unlink`, `rmdir`, `opendir`, `readdir`, `-e`, `-d`, `-f`, `-s`
-* **Other** — `to_json`, `from_json`, `..` range, `x` repetition
+| Category | Builtins (call directly) |
+|---|---|
+| String case/slug | `trim` &middot; `slugify` &middot; `snake_case` &middot; `kebab_case` &middot; `camel_case` &middot; `pascal_case` &middot; `title_case` &middot; `swap_case` &middot; `indent` &middot; `dedent` &middot; `rot13` |
+| String predicates / distance | `contains` &middot; `starts_with` &middot; `ends_with` &middot; `is_blank` &middot; `is_palindrome` &middot; `levenshtein` &middot; `hamming` &middot; `dice_coefficient` &middot; `find_all_indices` &middot; `common_prefix` &middot; `common_suffix` |
+| String padding / shaping | `pad_left` &middot; `pad_right` &middot; `truncate` &middot; `strip_ansi` &middot; `word_wrap` |
+| List | `chunk` &middot; `compact` &middot; `uniq` &middot; `uniq_by` &middot; `flatten` &middot; `group_by` &middot; `count_by` &middot; `index_by` &middot; `partition` &middot; `pluck` &middot; `sum` &middot; `mean` &middot; `median` &middot; `min_by` &middot; `max_by` &middot; `sort_by` &middot; `zip` &middot; `take` &middot; `drop` &middot; `range` |
+| Hash | `deep_merge` &middot; `pick` &middot; `omit` &middot; `invert` &middot; `filter` &middot; `from_pairs` &middot; `to_pairs` &middot; `is_empty` |
+| Num | `clamp` &middot; `between` &middot; `lerp` &middot; `round_to` &middot; `format_number` &middot; `format_bytes` &middot; `format_percent` &middot; `gcd` &middot; `lcm` &middot; `sign` &middot; `is_even` &middot; `is_odd` |
+| Time | `now_ms` &middot; `now_us` &middot; `format_duration` &middot; `elapsed` |
+| Path | `basename` &middot; `dirname` &middot; `common_prefix` |
+| Core | `uc`/`lc`/`length`/`sprintf`/`substr`/`index`/`rindex`/`split` &middot; `push`/`pop`/`shift`/`unshift`/`splice`/`sort`/`reverse`/`map`/`grep`/`join`/`keys`/`values`/`exists`/`defined`/`scalar`/`wantarray` &middot; `abs`/`int`/`sqrt`/`time`/`localtime`/`gmtime`/`sleep` &middot; `mkdir`/`unlink`/`rmdir`/`opendir`/`readdir`/`-e`/`-d`/`-f`/`-s` &middot; `to_json`/`from_json` &middot; the `..` range and `x` repetition operators |
 
 If a function here can be replaced with one builtin call, it's a bug —
 file an issue.
 
 ## [0x05] CLI
 
-`bin/utils.stk` is a thin dispatcher over the public functions:
+`bin/utils.stk` is a thin dispatcher exposing the surviving lib fns
+plus convenience routes to a few common builtins:
 
 ```sh
-s bin/utils.stk slugify "Hello, World!"        # hello-world
-s bin/utils.stk snake "HelloWorld"             # hello_world
-s bin/utils.stk truncate "long string here" 8  # long st…
-s bin/utils.stk bytes 1572864                  # 1.5 MiB
-s bin/utils.stk number 1234567.89              # 1,234,567.89
-s bin/utils.stk duration 5400                  # 1h 30m
+s bin/utils.stk pad-center "hi" 8 .            # ...hi...
+s bin/utils.stk squeeze "aaabbc"               # abc
+s bin/utils.stk mask 4111222233334444 4 4      # 4111********4444
+s bin/utils.stk escape-shell "it's \$foo"      # 'it'\''s $foo'
+s bin/utils.stk unwrap '"quoted"' '"'          # quoted
+s bin/utils.stk ordinal 21                     # 21st
+s bin/utils.stk round-multiple 13 5            # 15
 s bin/utils.stk parse-duration 1h30m           # 5400
+s bin/utils.stk ago $((now - 90))              # 1 minute ago
 s bin/utils.stk iso                            # 2026-06-10T14:23:05Z
 s bin/utils.stk compound-ext archive.tar.gz    # tar.gz
 s bin/utils.stk normalize a/./b/../c           # a/c
+s bin/utils.stk relative /a/x /a/b/c           # ../../x
 s bin/utils.stk help
+```
+
+For builtins (`slugify`, `chunk`, `deep_merge`, `format_bytes`, …), call
+stryke one-liner-style — no wrapper needed:
+
+```sh
+s -e 'print slugify($ARGV[0])' -- "Hello, World!"
 ```
 
 ## [0x06] Tests
 
 ```sh
-s test t/                       # assertions across all six sublibs
+s test t/                       # assertions across every public function
 ```
 
 `t/test_utils.stk` covers every public function with at least one
@@ -191,29 +220,23 @@ stryke-utils/
   stryke.toml                  # pure-stryke package manifest (no [ffi])
   Makefile                     # test / install / clean
   LICENSE                      # MIT
-  lib/                         # ← the release-tarball payload
+  lib/
     Utils.stk                  # `use Utils` — pulls all six sublibs
-    String.stk                 # `use Utils::String` — 39 fns
-    List.stk                   # `use Utils::List`   — 4 fns
-    Hash.stk                   # `use Utils::Hash`   — 7 fns
-    Num.stk                    # `use Utils::Num`    — 2 fns
-    Time.stk                   # `use Utils::Time`   — 6 fns
-    Path.stk                   # `use Utils::Path`   — 10 fns
-  bin/                         # repo-only (not in release tarball)
+    String.stk                 # `use Utils::String`
+    List.stk                   # `use Utils::List`
+    Hash.stk                   # `use Utils::Hash`
+    Num.stk                    # `use Utils::Num`
+    Time.stk                   # `use Utils::Time`
+    Path.stk                   # `use Utils::Path`
+  bin/
     utils.stk                  # CLI front-end
-  t/                           # repo-only
-    test_utils.stk
-  examples/                    # repo-only
-    discover.stk
-    word_frequency.stk
-    config_merge.stk
-  docs/                        # GitHub Pages content
-  tests/                       # CI gate scripts (.sh)
-  .github/workflows/           # ci.yml + release.yml
+  t/
+    test_utils.stk             # all-surface assertions
+  examples/
+    discover.stk               # one call per sublib
+    word_frequency.stk         # builtin-powered text pipeline
+    config_merge.stk           # layered config via deep_merge_all + deep_get
 ```
-
-Release tarballs ship `stryke.toml` + `lib/*.stk` only — matching the
-canonical stryke-* package layout. Everything else is repo-only.
 
 ## [0xFF] License
 
