@@ -73,28 +73,29 @@ jobs:
       - run: bash tests/docs-has-body-tag.sh
       - run: bash tests/workflow-no-tabs.sh
 
-  # Best-effort: install stryke and parse every .stk file. The test-runner
-  # use-resolution bug for `use Foo::Bar` against project-local `lib/` is
-  # tracked upstream; we don't gate CI on `s test t/` until it's fixed,
-  # but we DO gate on parse-clean for every .stk file shipped in this repo.
+  # Parse every .stk file with the real stryke binary. Grabs a prebuilt
+  # tarball from strykelang's release page — no rustup, no cargo install
+  # on the runner. Hard fail on any parse error.
   stryke-parse:
     name: Stryke parse (lib + bin + t + examples)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Install stryke
+      - name: Install stryke from latest GitHub release
         run: |
           set -euo pipefail
-          if ! command -v cargo >/dev/null 2>&1; then
-              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-                  | sh -s -- -y --default-toolchain stable
-              source "$HOME/.cargo/env"
-          fi
-          cargo install --git https://github.com/MenkeTechnologies/strykelang \
-              --bin stryke --locked || \
-              cargo install --git https://github.com/MenkeTechnologies/strykelang \
-                  --bin stryke
+          TAG=$(gh release view --repo MenkeTechnologies/strykelang \
+              --json tagName --jq '.tagName')
+          ASSET="stryke-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
+          gh release download "${TAG}" --repo MenkeTechnologies/strykelang \
+              --pattern "${ASSET}" --output /tmp/stryke.tar.gz
+          mkdir -p "${HOME}/.local/bin"
+          tar -C "${HOME}/.local/bin" -xzf /tmp/stryke.tar.gz
+          chmod +x "${HOME}/.local/bin"/{stryke,st,s} 2>/dev/null || true
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          "${HOME}/.local/bin/stryke" --version | head -1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Syntax-check every .stk file
         run: |
           set -euo pipefail
