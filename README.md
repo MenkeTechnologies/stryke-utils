@@ -68,7 +68,7 @@ From a local checkout:
 
 ```sh
 cd ~/projects/stryke-utils
-s pkg install -g .              # installs into ~/.stryke/store/utils@<version>/
+s pkg install -g .              # installs into ~/.stryke/store/stryke-utils@<version>/
 ```
 
 Or:
