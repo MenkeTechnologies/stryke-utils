@@ -31,3 +31,41 @@ fn Utils::Num::ordinal ($n) {
     return "${n}rd" if $mod10 == 3
     "${n}th"
 }
+
+# ── change & aggregates ──────────────────────────────────────────────
+
+## Percent change from $old to $new. percent_change(50, 75) → 50.
+## Dies on $old == 0 (undefined change).
+fn Utils::Num::percent_change ($old, $new) {
+    die "Utils::Num::percent_change: old value must be nonzero" if $old == 0
+    ($new - $old) / abs($old) * 100
+}
+
+## Weighted average of \@values by parallel \@weights.
+##   weighted_avg([1, 10], [3, 1]) → 3.25
+fn Utils::Num::weighted_avg ($values, $weights) {
+    die "Utils::Num::weighted_avg: length mismatch" unless scalar(@$values) == scalar(@$weights)
+    die "Utils::Num::weighted_avg: empty input" unless scalar(@$values)
+    var $sum = 0
+    var $wsum = 0
+    for var $i (0 .. scalar(@$values) - 1) {
+        $sum  += $values->[$i] * $weights->[$i]
+        $wsum += $weights->[$i]
+    }
+    die "Utils::Num::weighted_avg: zero total weight" if $wsum == 0
+    $sum / $wsum
+}
+
+## Percentile rank of $x within \@sample (midrank for ties), 0-100.
+## (`percentile`/`quantile` builtins go the other way: rank → value.)
+##   percentile_of([1,2,3,4], 3) → 62.5
+fn Utils::Num::percentile_of ($sample, $x) {
+    die "Utils::Num::percentile_of: empty sample" unless scalar(@$sample)
+    var $below = 0
+    var $ties = 0
+    for val $v (@$sample) {
+        $below++ if $v < $x
+        $ties++  if $v == $x
+    }
+    ($below + $ties / 2) / scalar(@$sample) * 100
+}

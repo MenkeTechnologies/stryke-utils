@@ -92,3 +92,43 @@ fn Utils::Hash::all_hashes ($h) {
     }
     1
 }
+
+# ── key reshaping ────────────────────────────────────────────────────
+
+## Rename keys per \%mapping (old → new). Keys absent from the mapping
+## pass through unchanged.
+fn Utils::Hash::rename_keys ($h, $mapping) {
+    var %out
+    for val $k (keys %$h) {
+        val $nk = exists $mapping->{$k} ? $mapping->{$k} : $k
+        $out{$nk} = $h->{$k}
+    }
+    \%out
+}
+
+## Flatten nested hashes into one level of dot-path keys.
+##   flatten_keys({a => {b => 1}, c => 2}) → {"a.b" => 1, c => 2}
+## Inverse of `unflatten_keys`. Empty nested hashes are kept as leaves.
+fn Utils::Hash::flatten_keys ($h, $prefix) {
+    var $pre = defined($prefix) ? "$prefix" : ""
+    var %out
+    for val $k (keys %$h) {
+        val $path = $pre eq "" ? $k : "$pre.$k"
+        val $v = $h->{$k}
+        if (ref($v) eq "HASH" && keys %$v) {
+            val $flat = Utils::Hash::flatten_keys($v, $path)
+            $out{$_} = $flat->{$_} for keys %$flat
+        } else {
+            $out{$path} = $v
+        }
+    }
+    \%out
+}
+
+## Expand dot-path keys back into nested hashes.
+##   unflatten_keys({"a.b" => 1, c => 2}) → {a => {b => 1}, c => 2}
+fn Utils::Hash::unflatten_keys ($h) {
+    var %out
+    Utils::Hash::deep_set(\%out, $_, $h->{$_}) for keys %$h
+    \%out
+}

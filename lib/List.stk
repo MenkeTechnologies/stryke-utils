@@ -53,3 +53,70 @@ fn Utils::List::windows ($items, $size) {
     }
     \@out
 }
+
+# ── products ─────────────────────────────────────────────────────────
+
+## Cartesian pairs of two lists, $a-major order. (The variadic N-list
+## form is the `cartesian_product` builtin — this is the cheap 2-list
+## pair case.)
+##   cartesian([1,2], ["x"]) → [[1,"x"],[2,"x"]]
+fn Utils::List::cartesian ($a, $b) {
+    var @out
+    for val $x (@$a) {
+        for val $y (@$b) {
+            push @out, [$x, $y]
+        }
+    }
+    \@out
+}
+
+# ── run-length ───────────────────────────────────────────────────────
+
+## Run-length encode consecutive equal items (string equality).
+##   rle_encode(["a","a","b"]) → [["a",2],["b",1]]
+fn Utils::List::rle_encode ($items) {
+    var @out
+    var $prev = "\0none"
+    for val $x (@$items) {
+        val $k = defined($x) ? "$x" : "\0undef"
+        if (@out && $k eq $prev) {
+            $out[-1][1]++
+        } else {
+            push @out, [$x, 1]
+            $prev = $k
+        }
+    }
+    \@out
+}
+
+## Inverse of `rle_encode`: [["a",2],["b",1]] → ["a","a","b"].
+fn Utils::List::rle_decode ($pairs) {
+    var @out
+    for val $p (@$pairs) {
+        push @out, $p->[0] for 1 .. $p->[1]
+    }
+    \@out
+}
+
+# ── ranking ──────────────────────────────────────────────────────────
+
+## Largest $n items, descending. Numeric compare by default; pass a
+## $key fn for a custom score: top_n($users, 3, fn ($u) { $u->{age} }).
+fn Utils::List::top_n ($items, $n, $key) {
+    return [] if $n < 1
+    val @scored = defined($key)
+        ? sort { $key->($b) <=> $key->($a) } @$items
+        : sort { $b <=> $a } @$items
+    val $last = $n > @scored ? $#scored : $n - 1
+    [ @scored[0 .. $last] ]
+}
+
+## Smallest $n items, ascending. Same $key contract as `top_n`.
+fn Utils::List::bottom_n ($items, $n, $key) {
+    return [] if $n < 1
+    val @scored = defined($key)
+        ? sort { $key->($a) <=> $key->($b) } @$items
+        : sort { $a <=> $b } @$items
+    val $last = $n > @scored ? $#scored : $n - 1
+    [ @scored[0 .. $last] ]
+}
