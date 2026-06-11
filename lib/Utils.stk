@@ -25,7 +25,7 @@ use Utils::Time
 use Utils::Path
 
 ## Package version (single source of truth for the umbrella + sublibs).
-fn Utils::version { "0.1.0" }
+fn Utils::version { "0.1.1" }
 
 ## All sublibrary names, in load order.
 fn Utils::modules {

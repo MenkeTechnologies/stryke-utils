@@ -130,11 +130,11 @@ Utils::Path::normalize("…")
 | Module | `use` | Highlights |
 |---|---|---|
 | String | `use Utils::String` | `trim`/`ltrim`/`rtrim`, `slugify`, `{snake,kebab,camel,pascal,title}_case`, `swap_case`, `pad_{left,right,center}`, `truncate`, `strip_ansi`, `visible_width`, `starts_with`, `ends_with`, `contains`, `count_occurrences`, `find_all_indices`, `levenshtein`, `hamming`, `dice_coefficient`, `common_prefix`, `common_suffix`, `word_wrap`, `indent`, `dedent`, `squeeze`, `compact_whitespace`, `partition`/`rpartition`, `between`, `chunks`, `mask_middle`, `escape_shell`, `expand_tabs`, `rot13`, `unwrap`, `is_blank`, `is_palindrome`, `reverse_chars` |
-| List   | `use Utils::List`   | `chunk`, `uniq`, `uniq_by`, `group_by`, `count_by`, `index_by`, `partition`, `compact`, `pluck`, `flatten`, `sum`, `mean`, `median`, `min_by`, `max_by`, `sort_by`, `zip`, `difference`, `intersection`, `union`, `range`, `windows`, `take`, `drop` |
-| Hash   | `use Utils::Hash`   | `deep_merge`, `deep_merge_all`, `pick`, `omit`, `invert`, `deep_get`, `deep_set`, `deep_has`, `to_pairs`, `from_pairs`, `map_keys`, `map_values`, `filter`, `is_empty`, `all_hashes` |
-| Num    | `use Utils::Num`    | `clamp`, `between`, `lerp`, `round_to`, `round_to_multiple`, `format_number`, `format_bytes`, `format_percent`, `ordinal`, `sign`, `is_even`, `is_odd`, `gcd`, `lcm` |
-| Time   | `use Utils::Time`   | `format_duration`, `parse_duration`, `ago`, `now_ms`, `now_us`, `format_iso8601`, `format_date`, `format_time`, `timed`, `elapsed` |
-| Path   | `use Utils::Path`   | `ext`, `compound_ext`, `without_ext`, `set_ext`, `splitext`, `basename`, `dirname`, `join`, `normalize`, `is_absolute`, `is_bare`, `relative`, `common_prefix` |
+| List   | `use Utils::List`   | `difference`, `intersection`, `union`, `windows` |
+| Hash   | `use Utils::Hash`   | `deep_merge_all`, `deep_get`, `deep_set`, `deep_has`, `map_keys`, `map_values`, `all_hashes` |
+| Num    | `use Utils::Num`    | `round_to_multiple`, `ordinal` |
+| Time   | `use Utils::Time`   | `parse_duration`, `ago`, `format_iso8601`, `format_date`, `format_time`, `timed` |
+| Path   | `use Utils::Path`   | `ext`, `compound_ext`, `without_ext`, `set_ext`, `splitext`, `join`, `normalize`, `is_absolute`, `is_bare`, `relative` |
 
 Every sublibrary stands alone — no FFI, no required environment, no
 state between calls. You can copy a single `lib/*.stk` file out of this
@@ -143,14 +143,16 @@ ever sibling sublibs, never external) come with it.
 
 ## [0x04] What's NOT in Here
 
-By design — these are stryke builtins, so we don't re-wrap them:
+By design — these are stryke builtins, so we don't re-wrap them. The
+list grows every stryke release as more composites land in core:
 
-* `uc` / `lc` / `ucfirst` / `lcfirst` / `length` / `sprintf` / `substr` / `index` / `split`
-* `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `map` / `grep` / `join` / `keys` / `values` / `exists` / `defined` / `scalar` / `wantarray`
-* `abs` / `int` / `sqrt` / `time` / `localtime` / `gmtime` / `sleep`
-* `mkdir` / `unlink` / `rmdir` / `opendir` / `readdir` / `-e` / `-d` / `-f` / `-s`
-* `to_json` / `from_json`
-* the `..` range operator, the `x` repetition operator
+* **String** — `uc`, `lc`, `ucfirst`, `lcfirst`, `length`, `sprintf`, `substr`, `index`, `split`
+* **List** — `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `map`, `grep`, `join`, `scalar`, `wantarray`, `chunk`, `uniq`, `uniq_by`, `group_by`, `count_by`, `index_by`, `partition`, `compact`, `pluck`, `flatten`, `sum`, `mean`, `median`, `min_by`, `max_by`, `sort_by`, `zip`, `range`, `take`, `drop`
+* **Hash** — `keys`, `values`, `exists`, `delete`, `each`, `deep_merge`, `invert`, `filter`, `pick`, `omit`, `to_pairs`, `from_pairs`, `is_empty`
+* **Num** — `abs`, `int`, `sqrt`, `clamp`, `between`, `lerp`, `round_to`, `format_number`, `format_bytes`, `format_percent`, `sign`, `is_even`, `is_odd`, `gcd`, `lcm`
+* **Time** — `time`, `localtime`, `gmtime`, `sleep`, `now_ms`, `now_us`, `elapsed`, `format_duration`
+* **Path** — `basename`, `dirname`, `common_prefix`, `mkdir`, `unlink`, `rmdir`, `opendir`, `readdir`, `-e`, `-d`, `-f`, `-s`
+* **Other** — `to_json`, `from_json`, `..` range, `x` repetition
 
 If a function here can be replaced with one builtin call, it's a bug —
 file an issue.
@@ -176,7 +178,7 @@ s bin/utils.stk help
 ## [0x06] Tests
 
 ```sh
-s test t/                       # ~150 assertions across all six sublibs
+s test t/                       # assertions across all six sublibs
 ```
 
 `t/test_utils.stk` covers every public function with at least one
@@ -189,23 +191,29 @@ stryke-utils/
   stryke.toml                  # pure-stryke package manifest (no [ffi])
   Makefile                     # test / install / clean
   LICENSE                      # MIT
-  lib/
+  lib/                         # ← the release-tarball payload
     Utils.stk                  # `use Utils` — pulls all six sublibs
-    String.stk                 # `use Utils::String`
-    List.stk                   # `use Utils::List`
-    Hash.stk                   # `use Utils::Hash`
-    Num.stk                    # `use Utils::Num`
-    Time.stk                   # `use Utils::Time`
-    Path.stk                   # `use Utils::Path`
-  bin/
+    String.stk                 # `use Utils::String` — 39 fns
+    List.stk                   # `use Utils::List`   — 4 fns
+    Hash.stk                   # `use Utils::Hash`   — 7 fns
+    Num.stk                    # `use Utils::Num`    — 2 fns
+    Time.stk                   # `use Utils::Time`   — 6 fns
+    Path.stk                   # `use Utils::Path`   — 10 fns
+  bin/                         # repo-only (not in release tarball)
     utils.stk                  # CLI front-end
-  t/
-    test_utils.stk             # all-surface assertions
-  examples/
-    discover.stk               # one call per sublib
-    word_frequency.stk         # String + List + Hash + Num pipeline
-    config_merge.stk           # layered config via deep_merge_all + deep_get
+  t/                           # repo-only
+    test_utils.stk
+  examples/                    # repo-only
+    discover.stk
+    word_frequency.stk
+    config_merge.stk
+  docs/                        # GitHub Pages content
+  tests/                       # CI gate scripts (.sh)
+  .github/workflows/           # ci.yml + release.yml
 ```
+
+Release tarballs ship `stryke.toml` + `lib/*.stk` only — matching the
+canonical stryke-* package layout. Everything else is repo-only.
 
 ## [0xFF] License
 
