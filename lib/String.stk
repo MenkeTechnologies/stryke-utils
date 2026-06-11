@@ -221,3 +221,44 @@ fn Utils::String::titleize ($s) {
     join " ", map { Utils::String::capitalize_first(lc($_)) }
               grep { length $_ } split /\s+/, $s
 }
+
+# ── newlines / blank lines ───────────────────────────────────────────
+
+## Normalize line endings to "\n": CRLF and lone CR both become LF.
+## The first step every text comparison or hash should run.
+fn Utils::String::normalize_newlines ($s) {
+    var $t = $s =~ s/\r\n/\n/gr
+    $t =~ s/\r/\n/gr
+}
+
+## Collapse runs of 2+ blank lines down to a single blank line. Lines
+## containing only whitespace count as blank. Normalizes newlines first.
+fn Utils::String::collapse_blank_lines ($s) {
+    var $t = Utils::String::normalize_newlines($s)
+    $t =~ s/\n[ \t]*\n(?:[ \t]*\n)+/\n\n/gr
+}
+
+# ── quotes ───────────────────────────────────────────────────────────
+
+## Strip ONE layer of matching surrounding quotes — either "..." or
+## '...' — auto-detecting which. Unmatched or unquoted input is returned
+## unchanged. Unlike `unwrap`, the quote character need not be known in
+## advance.
+fn Utils::String::strip_quotes ($s) {
+    return $s if length($s) < 2
+    val $first = substr($s, 0, 1)
+    return $s unless $first eq '"' || $first eq "'"
+    return $s unless substr($s, -1) eq $first
+    substr($s, 1, length($s) - 2)
+}
+
+# ── fill ─────────────────────────────────────────────────────────────
+
+## Repeat $unit to exactly $width characters, truncating the final
+## copy. repeat_to("ab", 5) → "ababa"; repeat_to("-", 4) → "----".
+## Useful for rule lines and fills. Empty $unit or $width <= 0 → "".
+fn Utils::String::repeat_to ($unit, $width) {
+    return "" if $width <= 0 || length($unit) == 0
+    val $reps = int($width / length($unit)) + 1
+    substr($unit x $reps, 0, $width)
+}

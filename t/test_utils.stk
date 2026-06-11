@@ -358,4 +358,26 @@ assert_eq Utils::Num::mean_abs_dev([5]),           0, "mean_abs_dev single"
 assert_eq Utils::Num::mean_abs_dev([2, 2, 2]),     0, "mean_abs_dev constant"
 assert_dies fn { Utils::Num::mean_abs_dev([]) },       "mean_abs_dev dies on empty"
 
+# ── Utils::String (newlines, blank lines, quotes, fill) ──────────────
+assert_eq Utils::String::normalize_newlines("a\r\nb\rc\n"), "a\nb\nc\n", "normalize_newlines CRLF + CR"
+assert_eq Utils::String::normalize_newlines("plain"),       "plain",     "normalize_newlines no-op"
+
+assert_eq Utils::String::collapse_blank_lines("a\n\n\n\nb"),   "a\n\nb",   "collapse_blank_lines runs to one"
+assert_eq Utils::String::collapse_blank_lines("a\n\nb"),       "a\n\nb",   "collapse_blank_lines single kept"
+assert_eq Utils::String::collapse_blank_lines("a\n \n\t\nb"),  "a\n\nb",   "collapse_blank_lines whitespace-only blanks"
+assert_eq Utils::String::collapse_blank_lines("a\nb"),         "a\nb",     "collapse_blank_lines no blanks"
+
+assert_eq Utils::String::strip_quotes('"hi"'),    "hi",     "strip_quotes double"
+assert_eq Utils::String::strip_quotes("'hi'"),    "hi",     "strip_quotes single"
+assert_eq Utils::String::strip_quotes('"hi'),     '"hi',    "strip_quotes unmatched no-op"
+assert_eq Utils::String::strip_quotes("plain"),   "plain",  "strip_quotes unquoted no-op"
+assert_eq Utils::String::strip_quotes('""'),      "",       "strip_quotes empty inside"
+assert_eq Utils::String::strip_quotes('"'),       '"',      "strip_quotes single char no-op"
+
+assert_eq Utils::String::repeat_to("ab", 5),  "ababa", "repeat_to truncates final copy"
+assert_eq Utils::String::repeat_to("-", 4),   "----",  "repeat_to single char"
+assert_eq Utils::String::repeat_to("xyz", 3), "xyz",   "repeat_to exact"
+assert_eq Utils::String::repeat_to("ab", 0),  "",      "repeat_to zero width"
+assert_eq Utils::String::repeat_to("", 5),    "",      "repeat_to empty unit"
+
 test_run
