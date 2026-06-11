@@ -1,207 +1,13 @@
 ## lib/List.stk — `use Utils::List`
 ##
-## Array composites that aren't stryke builtins. `map`, `grep`, `sort`,
-## `reverse`, `push`, `pop`, `shift`, `unshift`, `splice`, `scalar`,
-## `wantarray` are all stryke core — not duplicated here.
+## Array composites NOT already in stryke core. `chunk`, `compact`,
+## `count_by`, `drop`, `flatten`, `group_by`, `index_by`, `max_by`,
+## `mean`, `median`, `min_by`, `partition`, `pluck`, `range`,
+## `sort_by`, `sum`, `take`, `uniq`, `uniq_by`, `zip`, plus all of
+## `map`/`grep`/`sort`/`reverse`/`push`/`pop`/`shift`/`unshift`/`splice`
+## are stryke builtins — none duplicated here.
 
 package Utils::List
-
-# ── chunk ────────────────────────────────────────────────────────────
-
-## Split @items into groups of $size. Last group may be shorter.
-## Returns an arrayref of arrayrefs.
-fn Utils::List::chunk ($items, $size) {
-    die "Utils::List::chunk: size must be >= 1" if $size < 1
-    val @src = @$items
-    var @out
-    var $i = 0
-    while ($i < @src) {
-        val $end = $i + $size - 1 < $#src ? $i + $size - 1 : $#src
-        push @out, [ @src[$i..$end] ]
-        $i += $size
-    }
-    \@out
-}
-
-# ── uniq (stable) ────────────────────────────────────────────────────
-
-## Remove duplicates, preserving first-seen order. Compares by string
-## equality. For deeper equality, key with `uniq_by`.
-fn Utils::List::uniq ($items) {
-    var %seen
-    var @out
-    for val $x (@$items) {
-        val $k = defined $x ? "$x" : "\0undef"
-        unless ($seen{$k}++) {
-            push @out, $x
-        }
-    }
-    \@out
-}
-
-## Remove duplicates keyed by `$key->($x)`. Preserves first-seen order.
-fn Utils::List::uniq_by ($items, $key) {
-    var %seen
-    var @out
-    for val $x (@$items) {
-        val $k = $key->($x)
-        val $sk = defined $k ? "$k" : "\0undef"
-        unless ($seen{$sk}++) {
-            push @out, $x
-        }
-    }
-    \@out
-}
-
-# ── group / count / index ────────────────────────────────────────────
-
-## Group items by `$key->($x)`. Returns `{ key => [items] }`.
-fn Utils::List::group_by ($items, $key) {
-    var %out
-    for val $x (@$items) {
-        val $k = $key->($x)
-        push @{ $out{$k} //= [] }, $x
-    }
-    \%out
-}
-
-## Count items by `$key->($x)`. Returns `{ key => count }`.
-fn Utils::List::count_by ($items, $key) {
-    var %out
-    for val $x (@$items) {
-        $out{ $key->($x) }++
-    }
-    \%out
-}
-
-## Index items by `$key->($x)`. Returns `{ key => item }`. On collision
-## the LAST item wins — use `group_by` if you need every duplicate.
-fn Utils::List::index_by ($items, $key) {
-    var %out
-    for val $x (@$items) {
-        $out{ $key->($x) } = $x
-    }
-    \%out
-}
-
-# ── partition ────────────────────────────────────────────────────────
-
-## Split into two lists: items where `$pred->($x)` is true, and items
-## where it's false. Returns `[\@truthy, \@falsy]`.
-fn Utils::List::partition ($items, $pred) {
-    var @yes
-    var @no
-    for val $x (@$items) {
-        if ($pred->($x)) { push @yes, $x } else { push @no, $x }
-    }
-    [\@yes, \@no]
-}
-
-# ── compact / pluck ──────────────────────────────────────────────────
-
-## Drop undef and empty-string entries. Zeros and `"0"` survive.
-fn Utils::List::compact ($items) {
-    [ grep { defined($_) && $_ ne "" } @$items ]
-}
-
-## Extract `$key` from each hashref in the list. Missing keys come back
-## as `undef`. Common DBI-row / JSON-row idiom.
-fn Utils::List::pluck ($items, $key) {
-    [ map { $_->{$key} } @$items ]
-}
-
-# ── flatten ──────────────────────────────────────────────────────────
-
-## Recursively flatten any depth of nested arrayrefs into a single list.
-## Non-array refs (hashes, code, etc.) are kept as-is.
-fn Utils::List::flatten ($items) {
-    var @out
-    for val $x (@$items) {
-        if (ref($x) eq "ARRAY") {
-            val $sub = Utils::List::flatten($x)
-            push @out, @$sub
-        } else {
-            push @out, $x
-        }
-    }
-    \@out
-}
-
-# ── min / max / sum / mean / median ──────────────────────────────────
-
-## Numeric sum. Empty list → 0.
-fn Utils::List::sum ($items) {
-    var $s = 0
-    $s += $_ for @$items
-    $s
-}
-
-## Arithmetic mean. Empty list → undef.
-fn Utils::List::mean ($items) {
-    return undef unless @$items
-    Utils::List::sum($items) / scalar(@$items)
-}
-
-## Median. Empty list → undef. Average of the middle two for even counts.
-fn Utils::List::median ($items) {
-    return undef unless @$items
-    val @s = sort { $a <=> $b } @$items
-    val $n = scalar(@s)
-    if ($n % 2 == 1) {
-        $s[int($n / 2)]
-    } else {
-        ($s[$n / 2 - 1] + $s[$n / 2]) / 2
-    }
-}
-
-## Min/max by `$key->($x)`; returns the item itself, not the key.
-fn Utils::List::min_by ($items, $key) {
-    return undef unless @$items
-    var $best  = $items->[0]
-    var $bestk = $key->($best)
-    for val $x (@$items[1..$#{$items}]) {
-        val $k = $key->($x)
-        if ($k < $bestk) { $best = $x; $bestk = $k }
-    }
-    $best
-}
-
-fn Utils::List::max_by ($items, $key) {
-    return undef unless @$items
-    var $best  = $items->[0]
-    var $bestk = $key->($best)
-    for val $x (@$items[1..$#{$items}]) {
-        val $k = $key->($x)
-        if ($k > $bestk) { $best = $x; $bestk = $k }
-    }
-    $best
-}
-
-## Stable sort by `$key->($x)` ascending — Schwartzian transform so the
-## key fn fires once per item.
-fn Utils::List::sort_by ($items, $key) {
-    [ map { $_->[1] }
-      sort { $a->[0] <=> $b->[0] || $a->[2] <=> $b->[2] }
-      map { [ $key->($items->[$_]), $items->[$_], $_ ] } 0..$#{$items}
-    ]
-}
-
-# ── zip ──────────────────────────────────────────────────────────────
-
-## Zip 2+ arrayrefs into pairs/tuples. Stops at the shortest list.
-##   zip([1,2,3], [a,b]) → [[1,a],[2,b]]
-fn Utils::List::zip (@lists) {
-    return [] unless @lists
-    var $min = scalar(@{ $lists[0] })
-    for val $l (@lists[1..$#lists]) {
-        $min = scalar(@$l) if scalar(@$l) < $min
-    }
-    var @out
-    for var $i (0..$min - 1) {
-        push @out, [ map { $_->[$i] } @lists ]
-    }
-    \@out
-}
 
 # ── set ops ──────────────────────────────────────────────────────────
 
@@ -229,24 +35,7 @@ fn Utils::List::intersection ($a, $b) {
 
 ## Items present in EITHER list, deduped, $a's items first.
 fn Utils::List::union ($a, $b) {
-    Utils::List::uniq([ @$a, @$b ])
-}
-
-# ── range / repeat ───────────────────────────────────────────────────
-
-## Numeric range with step (stryke `..` only steps by 1). `range(0,10,2)`
-## → [0,2,4,6,8]. Stops STRICTLY before $stop (Python-style).
-fn Utils::List::range ($start, $stop, $step = 1) {
-    die "Utils::List::range: step != 0 required" if $step == 0
-    var @out
-    if ($step > 0) {
-        var $i = $start
-        while ($i < $stop) { push @out, $i; $i += $step }
-    } else {
-        var $i = $start
-        while ($i > $stop) { push @out, $i; $i += $step }
-    }
-    \@out
+    [ uniq(@$a, @$b) ]
 }
 
 # ── windowing ────────────────────────────────────────────────────────
@@ -263,20 +52,4 @@ fn Utils::List::windows ($items, $size) {
         push @out, [ @src[$i..$i + $size - 1] ]
     }
     \@out
-}
-
-# ── take / drop ──────────────────────────────────────────────────────
-
-## First $n items. Negative $n returns []. $n > len returns the whole list.
-fn Utils::List::take ($items, $n) {
-    return [] if $n <= 0
-    return [ @$items ] if $n >= scalar(@$items)
-    [ @$items[0..$n - 1] ]
-}
-
-## Everything after the first $n items. Negative $n returns the whole list.
-fn Utils::List::drop ($items, $n) {
-    return [ @$items ] if $n <= 0
-    return [] if $n >= scalar(@$items)
-    [ @$items[$n..$#{$items}] ]
 }

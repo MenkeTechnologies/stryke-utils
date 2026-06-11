@@ -1,69 +1,23 @@
 ## lib/Hash.stk — `use Utils::Hash`
 ##
-## Hashref composites. `keys`, `values`, `exists`, `delete`, `each` are
-## stryke builtins and aren't duplicated here.
+## Hashref composites that aren't already stryke builtins. `keys`,
+## `values`, `exists`, `delete`, `each`, `deep_merge`, `invert`,
+## `filter`, `pick`, `omit`, `from_pairs`, `to_pairs`, `is_empty` are
+## all in stryke core — not duplicated here.
 
 package Utils::Hash
 
-# ── deep merge ───────────────────────────────────────────────────────
+# ── deep merge (variadic) ────────────────────────────────────────────
 
-## Recursively merge $src into a copy of $dst. Hashes merge key-by-key;
-## arrays / scalars / coderefs from $src override $dst. Original args
-## are not mutated. Right-most wins on conflict.
-fn Utils::Hash::deep_merge ($dst, $src) {
-    var %out = %$dst
-    for val $k (keys %$src) {
-        val $sv = $src->{$k}
-        if (ref($sv) eq "HASH" && ref($out{$k}) eq "HASH") {
-            $out{$k} = Utils::Hash::deep_merge($out{$k}, $sv)
-        } else {
-            $out{$k} = $sv
-        }
-    }
-    \%out
-}
-
-## N-ary deep merge — later hashes override earlier ones.
+## N-ary deep merge — later hashes override earlier ones. Wraps the
+## binary stryke `deep_merge` builtin into a fold over @hashes.
 fn Utils::Hash::deep_merge_all (@hashes) {
     return {} unless @hashes
     var $acc = shift @hashes
     for val $h (@hashes) {
-        $acc = Utils::Hash::deep_merge($acc, $h)
+        $acc = deep_merge($acc, $h)
     }
     $acc
-}
-
-# ── pick / omit ──────────────────────────────────────────────────────
-
-## Subset of $h containing only @keys that exist. Missing keys skipped.
-fn Utils::Hash::pick ($h, @keys) {
-    var %out
-    for val $k (@keys) {
-        $out{$k} = $h->{$k} if exists $h->{$k}
-    }
-    \%out
-}
-
-## Copy of $h with @keys removed.
-fn Utils::Hash::omit ($h, @keys) {
-    var %drop
-    $drop{$_} = 1 for @keys
-    var %out
-    for val $k (keys %$h) {
-        $out{$k} = $h->{$k} unless $drop{$k}
-    }
-    \%out
-}
-
-# ── invert ───────────────────────────────────────────────────────────
-
-## Swap keys and values. Duplicate values collapse — last write wins.
-fn Utils::Hash::invert ($h) {
-    var %out
-    for val $k (keys %$h) {
-        $out{ $h->{$k} } = $k
-    }
-    \%out
 }
 
 # ── deep get / set with dot path ─────────────────────────────────────
@@ -109,23 +63,7 @@ fn Utils::Hash::deep_has ($h, $path) {
     exists $cur->{ $segs[-1] } ? 1 : 0
 }
 
-# ── pairs ────────────────────────────────────────────────────────────
-
-## `{a=>1, b=>2}` → `[[a,1],[b,2]]`, sorted by key for determinism.
-fn Utils::Hash::to_pairs ($h) {
-    [ map { [ $_, $h->{$_} ] } sort keys %$h ]
-}
-
-## `[[a,1],[b,2]]` → `{a=>1, b=>2}`. Duplicate keys: last wins.
-fn Utils::Hash::from_pairs ($pairs) {
-    var %out
-    for val $p (@$pairs) {
-        $out{ $p->[0] } = $p->[1]
-    }
-    \%out
-}
-
-# ── map / filter ─────────────────────────────────────────────────────
+# ── map ──────────────────────────────────────────────────────────────
 
 ## Transform every key via `$f->($k, $v)`. Values unchanged.
 fn Utils::Hash::map_keys ($h, $f) {
@@ -145,21 +83,7 @@ fn Utils::Hash::map_values ($h, $f) {
     \%out
 }
 
-## Keep only keys where `$pred->($k, $v)` is true.
-fn Utils::Hash::filter ($h, $pred) {
-    var %out
-    for val $k (keys %$h) {
-        $out{$k} = $h->{$k} if $pred->($k, $h->{$k})
-    }
-    \%out
-}
-
 # ── shape ────────────────────────────────────────────────────────────
-
-## True if $h has zero keys.
-fn Utils::Hash::is_empty ($h) {
-    scalar(keys %$h) == 0 ? 1 : 0
-}
 
 ## True if every value in $h is itself a hashref (handy before deep ops).
 fn Utils::Hash::all_hashes ($h) {

@@ -88,28 +88,27 @@ Utils::String::snake_case("HelloWorld")         # "hello_world"
 Utils::String::truncate("a long string", 8)     # "a long …"
 Utils::String::levenshtein("kitten", "sitting") # 3
 
-# Lists
-Utils::List::chunk([1..7], 3)                   # [[1,2,3],[4,5,6],[7]]
-Utils::List::uniq([3,1,2,1,3,4])                # [3,1,2,4]
-Utils::List::group_by(\@rows, sub ($r) { $r->{kind} })
+# Lists — set ops + sliding windows (chunk/uniq/group_by are builtins)
+Utils::List::difference([1,2,3,4], [2,4])       # [1,3]
+Utils::List::intersection([1,2,3], [2,3,5])     # [2,3]
+Utils::List::windows([1,2,3,4], 2)              # [[1,2],[2,3],[3,4]]
 
-# Hashes
+# Hashes — n-ary merge + dot-path access (deep_merge/pick/omit are builtins)
 my $cfg = Utils::Hash::deep_merge_all(
     $defaults, $from_env, $runtime)
 Utils::Hash::deep_get($cfg, "db.pool.max")      # nested read by dot path
+Utils::Hash::deep_has($cfg, "db.pool.min")      # missing-vs-undef differentiator
 
-# Numbers
-Utils::Num::format_bytes(1572864)               # "1.5 MiB"
-Utils::Num::format_number(1234567)              # "1,234,567"
-Utils::Num::format_percent(0.524)               # "52.4%"
+# Numbers — ordinal + round-to-multiple (clamp/format_bytes/format_number are builtins)
 Utils::Num::ordinal(21)                         # "21st"
+Utils::Num::round_to_multiple(13, 5)            # 15
 
-# Time
-Utils::Time::format_duration(5400)              # "1h 30m"
+# Time — duration parsing + relative phrasing (now_ms/format_duration are builtins)
 Utils::Time::parse_duration("1h30m")            # 5400
 Utils::Time::ago(time() - 90)                   # "1 minute ago"
+Utils::Time::format_iso8601()                   # "2026-06-10T14:23:05Z"
 
-# Paths
+# Paths — path-string arithmetic (basename/common_prefix are builtins)
 Utils::Path::compound_ext("archive.tar.gz")     # "tar.gz"
 Utils::Path::set_ext("a/b.csv", "parquet")      # "a/b.parquet"
 Utils::Path::normalize("/a/b/../c/./d")         # "/a/c/d"

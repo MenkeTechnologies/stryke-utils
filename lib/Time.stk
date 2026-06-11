@@ -1,28 +1,12 @@
 ## lib/Time.stk — `use Utils::Time`
 ##
-## Time/duration composites. `time`, `localtime`, `gmtime`, `sleep` are
-## stryke builtins — not re-exported.
+## Time/duration composites NOT already in stryke core. `time`,
+## `localtime`, `gmtime`, `sleep`, `now_ms`, `now_us`, `elapsed`,
+## `format_duration` are stryke builtins — none duplicated here.
 
 package Utils::Time
 
-# ── duration formatting ──────────────────────────────────────────────
-
-## Seconds → human duration. format_duration(3725) → "1h 2m 5s".
-## Drops zero leading components; `format_duration(0)` → "0s".
-fn Utils::Time::format_duration ($secs) {
-    val $sign = $secs < 0 ? "-" : ""
-    var $s = abs(int($secs))
-    return "${sign}0s" if $s == 0
-    val $d = int($s / 86400); $s %= 86400
-    val $h = int($s / 3600);  $s %= 3600
-    val $m = int($s / 60);    $s %= 60
-    var @parts
-    push @parts, "${d}d" if $d
-    push @parts, "${h}h" if $h
-    push @parts, "${m}m" if $m
-    push @parts, "${s}s" if $s
-    $sign . join(" ", @parts)
-}
+# ── duration parsing ─────────────────────────────────────────────────
 
 ## Duration string → seconds. parse_duration("1h30m") → 5400.
 ## Accepts: d (days), h (hours), m (minutes), s (seconds), ms.
@@ -66,19 +50,6 @@ fn Utils::Time::ago ($epoch, $now = undef) {
     $suffix eq "" ? "$prefix$body" : "$body $suffix"
 }
 
-# ── high-resolution timestamps ───────────────────────────────────────
-
-## Milliseconds since the epoch as an integer. Wraps `time()` × 1000
-## when fractional time isn't available.
-fn Utils::Time::now_ms {
-    int(time() * 1000)
-}
-
-## Microseconds since the epoch as an integer.
-fn Utils::Time::now_us {
-    int(time() * 1000000)
-}
-
 # ── ISO-8601 / RFC-3339 ──────────────────────────────────────────────
 
 ## UTC ISO-8601 string. format_iso8601(time()) → "2026-06-10T14:23:05Z".
@@ -106,16 +77,11 @@ fn Utils::Time::format_time ($epoch = undef) {
 # ── timing helpers ───────────────────────────────────────────────────
 
 ## Run $code and return (result, elapsed-seconds). $code is a coderef.
+## (Stryke's `elapsed` builtin returns only the duration; use `timed`
+## when you also need the call's return value.)
 fn Utils::Time::timed ($code) {
     val $t0 = time()
     val $r  = $code->()
     val $dt = time() - $t0
     [$r, $dt]
-}
-
-## Run $code and return the elapsed seconds only (result discarded).
-fn Utils::Time::elapsed ($code) {
-    val $t0 = time()
-    $code->()
-    time() - $t0
 }

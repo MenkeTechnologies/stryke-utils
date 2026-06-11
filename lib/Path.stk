@@ -1,8 +1,11 @@
 ## lib/Path.stk — `use Utils::Path`
 ##
-## Filesystem-path string composites. We don't wrap `mkdir`, `unlink`,
-## `rmdir`, `opendir`, `readdir`, `-e`, `-d`, `-f`, `-s` — those are
-## stryke builtins. This module only manipulates the path *string*.
+## Filesystem-path string composites NOT already in stryke core.
+## `basename`, `dirname`, `common_prefix` are stryke builtins, as are
+## the filesystem ops (`mkdir`, `unlink`, `rmdir`, `opendir`, `readdir`,
+## `-e`, `-d`, `-f`, `-s`). This module only manipulates the path
+## *string*. Note: stryke's `join` is the array builtin and stryke's
+## `normalize` is a vector op — the path-aware variants live here.
 
 package Utils::Path
 
@@ -12,7 +15,7 @@ package Utils::Path
 ## files like "x.tar.gz" return only the last segment ("gz"). For the
 ## full compound, use `compound_ext`.
 fn Utils::Path::ext ($path) {
-    val $base = Utils::Path::_basename($path)
+    val $base = basename($path)
     return "" unless $base =~ /\.([^.]+)$/
     $1
 }
@@ -21,7 +24,7 @@ fn Utils::Path::ext ($path) {
 ## no dot, single segment ("gz") otherwise. The rule: include every
 ## suffix where each segment is purely alphanumeric and <= 4 chars.
 fn Utils::Path::compound_ext ($path) {
-    val $base = Utils::Path::_basename($path)
+    val $base = basename($path)
     val @parts = split /\./, $base
     return "" if @parts <= 1
     var @suffix
@@ -65,33 +68,12 @@ fn Utils::Path::splitext ($path) {
     ($stem, $e)
 }
 
-# ── basename / dirname ───────────────────────────────────────────────
-
-## Internal: last path segment. Trailing slashes stripped.
-fn Utils::Path::_basename ($path) {
-    val $p = $path =~ s{/+$}{}r
-    return $p unless $p =~ m{/}
-    $p =~ s{^.*/}{}r
-}
-
-## Public basename — strips trailing slashes, then the last segment.
-fn Utils::Path::basename ($path) {
-    Utils::Path::_basename($path)
-}
-
-## Directory portion. "a/b/c.txt" → "a/b"; "c.txt" → "."; "/" → "/".
-fn Utils::Path::dirname ($path) {
-    return "/" if $path eq "/"
-    val $p = $path =~ s{/+$}{}r
-    return "." unless $p =~ m{/}
-    val $d = $p =~ s{/[^/]+$}{}r
-    $d eq "" ? "/" : $d
-}
-
-# ── join ─────────────────────────────────────────────────────────────
+# ── join (variadic path join) ────────────────────────────────────────
 
 ## Join path segments. Strips trailing slashes from each piece, drops
-## empty segments, preserves a leading "/" if the first segment had one.
+## empty segments, preserves a leading "/" if the first segment had
+## one. Unlike stryke's `join` builtin (array-join with a separator),
+## this is variadic and slash-aware.
 fn Utils::Path::join (@parts) {
     var @clean
     for val $p (@parts) {
@@ -106,11 +88,12 @@ fn Utils::Path::join (@parts) {
     @tail ? "$head/" . join("/", @tail) : $head
 }
 
-# ── normalize / absolute ─────────────────────────────────────────────
+# ── normalize (path-aware) ───────────────────────────────────────────
 
 ## Resolve `.` and `..` segments lexically (no filesystem touch).
 ## Preserves a leading "/". A path that walks above the root collapses
-## to "/" (or "." for relative).
+## to "/" (or "." for relative). Distinct from stryke's `normalize`
+## builtin (vector normalize).
 fn Utils::Path::normalize ($path) {
     val $abs = substr($path, 0, 1) eq "/"
     val @segs = grep { length && $_ ne "." } split m{/+}, $path
@@ -134,6 +117,8 @@ fn Utils::Path::normalize ($path) {
     $body eq "" ? "." : $body
 }
 
+# ── predicates ───────────────────────────────────────────────────────
+
 ## True if $path starts with "/".
 fn Utils::Path::is_absolute ($path) {
     substr($path, 0, 1) eq "/" ? 1 : 0
@@ -144,7 +129,7 @@ fn Utils::Path::is_bare ($path) {
     $path !~ m{/} ? 1 : 0
 }
 
-# ── relative / common ────────────────────────────────────────────────
+# ── relative ─────────────────────────────────────────────────────────
 
 ## Path of $target relative to $from. Both args are normalized first.
 ## Returns "." if they resolve to the same path.
@@ -160,21 +145,4 @@ fn Utils::Path::relative ($target, $from) {
     val @rest = @ts[$i..$#ts]
     val $body = join "/", (("..") x $ups), @rest
     $body eq "" ? "." : $body
-}
-
-## Longest path prefix shared by all @paths, ending at a `/` boundary.
-fn Utils::Path::common_prefix (@paths) {
-    return "" unless @paths
-    return $paths[0] if @paths == 1
-    val @first = split m{/}, $paths[0]
-    var @common = @first
-    for val $p (@paths[1..$#paths]) {
-        val @segs = split m{/}, $p
-        var $i = 0
-        while ($i < @common && $i < @segs && $common[$i] eq $segs[$i]) {
-            $i++
-        }
-        @common = @common[0..$i - 1]
-    }
-    join "/", @common
 }

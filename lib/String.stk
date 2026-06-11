@@ -1,19 +1,20 @@
 ## lib/String.stk — `use Utils::String`
 ##
-## String composites that aren't stryke builtins. Anything you can do
-## with one call to `uc`/`lc`/`length`/`sprintf`/`index`/`substr`/`split`
-## belongs in stryke core, not here.
+## String composites NOT already in stryke core. `trim`, `snake_case`,
+## `kebab_case`, `camel_case`, `pascal_case`, `title_case`, `slugify`,
+## `pad_left`, `pad_right`, `truncate`, `strip_ansi`, `contains`,
+## `starts_with`, `ends_with`, `levenshtein`, `hamming`,
+## `dice_coefficient`, `word_wrap`, `swap_case`, `indent`, `dedent`,
+## `rot13`, `is_blank`, `is_palindrome`, `find_all_indices`,
+## `common_prefix`, `common_suffix` are stryke builtins — none
+## duplicated here. Plus `uc`/`lc`/`length`/`sprintf`/`index`/`rindex`
+## /`substr`/`split` of course.
 
 package Utils::String
 
-# ── trim ─────────────────────────────────────────────────────────────
+# ── trim (left / right) ──────────────────────────────────────────────
 
-## Strip leading and trailing whitespace.
-fn Utils::String::trim ($s) {
-    $s =~ s/^\s+|\s+$//gr
-}
-
-## Strip leading whitespace only.
+## Strip leading whitespace only. (Bidirectional `trim` is a builtin.)
 fn Utils::String::ltrim ($s) {
     $s =~ s/^\s+//r
 }
@@ -23,72 +24,10 @@ fn Utils::String::rtrim ($s) {
     $s =~ s/\s+$//r
 }
 
-# ── case conversion ──────────────────────────────────────────────────
-
-## "Hello World" → "hello_world". Splits on whitespace, hyphens, and
-## case boundaries (`HelloWorld` → `hello_world` too).
-fn Utils::String::snake_case ($s) {
-    var $t = $s =~ s/([a-z0-9])([A-Z])/$1_$2/gr
-    $t =~ s/[\s\-]+/_/g
-    lc $t
-}
-
-## "Hello World" → "hello-world". Same boundaries as snake_case.
-fn Utils::String::kebab_case ($s) {
-    var $t = $s =~ s/([a-z0-9])([A-Z])/$1-$2/gr
-    $t =~ s/[\s_]+/-/g
-    lc $t
-}
-
-## "hello world" → "helloWorld". Idempotent on already-camel input.
-fn Utils::String::camel_case ($s) {
-    val @parts = split /[\s_\-]+/, $s
-    return "" unless @parts
-    val $head = lc shift @parts
-    val @rest = map { ucfirst lc $_ } @parts
-    $head . join("", @rest)
-}
-
-## "hello world" → "HelloWorld".
-fn Utils::String::pascal_case ($s) {
-    val @parts = split /[\s_\-]+/, $s
-    join("", map { ucfirst lc $_ } @parts)
-}
-
-## "hello world" → "Hello World". Title-cases each whitespace-separated
-## word; preserves the original separators.
-fn Utils::String::title_case ($s) {
-    $s =~ s/(\S+)/ucfirst lc $1/ger
-}
-
-# ── slugify ──────────────────────────────────────────────────────────
-
-## "Hello, World! 2026" → "hello-world-2026". Lowercases, strips
-## non-alphanumeric runs, collapses to single `-`, trims leading/trailing.
-fn Utils::String::slugify ($s) {
-    var $t = lc $s
-    $t =~ s/[^a-z0-9]+/-/g
-    $t =~ s/^-+|-+$//g
-    $t
-}
-
 # ── padding ──────────────────────────────────────────────────────────
 
-## Pad to $width on the left with $ch (default " "). No truncation.
-fn Utils::String::pad_left ($s, $width, $ch = " ") {
-    val $n = $width - length($s)
-    return $s if $n <= 0
-    ($ch x $n) . $s
-}
-
-## Pad to $width on the right with $ch (default " "). No truncation.
-fn Utils::String::pad_right ($s, $width, $ch = " ") {
-    val $n = $width - length($s)
-    return $s if $n <= 0
-    $s . ($ch x $n)
-}
-
 ## Pad to $width centred with $ch; extra char goes on the right.
+## (`pad_left`/`pad_right` are builtins; the centred form is not.)
 fn Utils::String::pad_center ($s, $width, $ch = " ") {
     val $n = $width - length($s)
     return $s if $n <= 0
@@ -97,47 +36,11 @@ fn Utils::String::pad_center ($s, $width, $ch = " ") {
     ($ch x $left) . $s . ($ch x $right)
 }
 
-# ── truncate ─────────────────────────────────────────────────────────
+# ── ANSI-aware width ─────────────────────────────────────────────────
 
-## Cap at $max chars; append $ellipsis (default "…") if the original
-## exceeded $max. $ellipsis counts toward the budget.
-fn Utils::String::truncate ($s, $max, $ellipsis = "…") {
-    return $s if length($s) <= $max
-    val $keep = $max - length($ellipsis)
-    return $ellipsis if $keep <= 0
-    substr($s, 0, $keep) . $ellipsis
-}
-
-# ── ANSI strip ───────────────────────────────────────────────────────
-
-## Remove ANSI escape sequences (CSI codes — colors, cursor moves, etc.).
-## Useful before measuring visible width with `length`.
-fn Utils::String::strip_ansi ($s) {
-    $s =~ s/\e\[[0-9;?]*[a-zA-Z]//gr
-}
-
-## Visible width — `length` after `strip_ansi`.
+## Visible width — `length` after stripping ANSI escapes.
 fn Utils::String::visible_width ($s) {
-    length(Utils::String::strip_ansi($s))
-}
-
-# ── predicates ───────────────────────────────────────────────────────
-
-## True if $s begins with $prefix.
-fn Utils::String::starts_with ($s, $prefix) {
-    val $n = length($prefix)
-    $n == 0 || substr($s, 0, $n) eq $prefix
-}
-
-## True if $s ends with $suffix.
-fn Utils::String::ends_with ($s, $suffix) {
-    val $n = length($suffix)
-    $n == 0 || substr($s, -$n) eq $suffix
-}
-
-## True if $s contains $needle anywhere.
-fn Utils::String::contains ($s, $needle) {
-    index($s, $needle) >= 0
+    length(strip_ansi($s))
 }
 
 # ── counting ─────────────────────────────────────────────────────────
@@ -155,89 +58,11 @@ fn Utils::String::count_occurrences ($s, $needle) {
     $n
 }
 
-# ── edit distance ────────────────────────────────────────────────────
-
-## Levenshtein distance — insertions + deletions + substitutions needed
-## to turn $a into $b. O(len(a) * len(b)) time, O(min) space.
-fn Utils::String::levenshtein ($a, $b) {
-    return length($b) if length($a) == 0
-    return length($a) if length($b) == 0
-    val @ac = split //, $a
-    val @bc = split //, $b
-    var @prev = (0..scalar(@bc))
-    var @curr = (0) x (scalar(@bc) + 1)
-    for var $i (0..$#ac) {
-        $curr[0] = $i + 1
-        for var $j (0..$#bc) {
-            val $cost = $ac[$i] eq $bc[$j] ? 0 : 1
-            val $del = $prev[$j + 1] + 1
-            val $ins = $curr[$j]     + 1
-            val $sub = $prev[$j]     + $cost
-            var $m = $del < $ins ? $del : $ins
-            $m = $sub if $sub < $m
-            $curr[$j + 1] = $m
-        }
-        @prev = @curr
-    }
-    $curr[-1]
-}
-
-# ── repeat / wrap ────────────────────────────────────────────────────
-
-## Word-wrap $s to lines of at most $width chars. Preserves single words
-## longer than $width (no mid-word breaks). Returns the joined string.
-fn Utils::String::word_wrap ($s, $width) {
-    var @out
-    var $line = ""
-    for val $w (split /\s+/, $s) {
-        if (length($line) == 0) {
-            $line = $w
-        } elsif (length($line) + 1 + length($w) <= $width) {
-            $line .= " " . $w
-        } else {
-            push @out, $line
-            $line = $w
-        }
-    }
-    push @out, $line if length($line)
-    join "\n", @out
-}
+# ── reverse ──────────────────────────────────────────────────────────
 
 ## Reverse the characters of $s (UTF-8: code-point order, not graphemes).
 fn Utils::String::reverse_chars ($s) {
     join "", reverse split //, $s
-}
-
-# ── case (extras) ────────────────────────────────────────────────────
-
-## "Hello" → "hELLO". Swap case of each ASCII letter; non-letters
-## untouched.
-fn Utils::String::swap_case ($s) {
-    join "", map { /[a-z]/ ? uc $_ : /[A-Z]/ ? lc $_ : $_ } split //, $s
-}
-
-# ── indent / dedent ──────────────────────────────────────────────────
-
-## Prepend $prefix to every line in $s (including blank lines).
-## Mirrors `sed 's/^/PFX/'`.
-fn Utils::String::indent ($s, $prefix) {
-    $s =~ s/^/$prefix/gmr
-}
-
-## Strip the longest common leading whitespace from every non-blank
-## line. Blank lines are left untouched. Mirrors Python's
-## `textwrap.dedent`.
-fn Utils::String::dedent ($s) {
-    val @lines = split /\n/, $s, -1
-    var $min = undef
-    for val $l (@lines) {
-        next if $l =~ /^\s*$/
-        val ($ws) = $l =~ /^(\s*)/
-        val $n = length($ws)
-        $min = $n if !defined($min) || $n < $min
-    }
-    return $s unless defined($min) && $min > 0
-    join "\n", map { /^\s*$/ ? $_ : substr($_, $min) } @lines
 }
 
 # ── collapse / squeeze ───────────────────────────────────────────────
@@ -256,94 +81,7 @@ fn Utils::String::compact_whitespace ($s) {
     $t
 }
 
-# ── common affix ─────────────────────────────────────────────────────
-
-## Longest string that is a prefix of both $a and $b.
-fn Utils::String::common_prefix ($a, $b) {
-    val $max = length($a) < length($b) ? length($a) : length($b)
-    var $i = 0
-    while ($i < $max && substr($a, $i, 1) eq substr($b, $i, 1)) {
-        $i++
-    }
-    substr($a, 0, $i)
-}
-
-## Longest string that is a suffix of both $a and $b.
-fn Utils::String::common_suffix ($a, $b) {
-    val $la = length($a)
-    val $lb = length($b)
-    val $max = $la < $lb ? $la : $lb
-    var $i = 0
-    while ($i < $max && substr($a, $la - 1 - $i, 1) eq substr($b, $lb - 1 - $i, 1)) {
-        $i++
-    }
-    substr($a, $la - $i)
-}
-
-# ── similarity / distance ────────────────────────────────────────────
-
-## Hamming distance — substitutions needed to turn $a into $b.
-## Requires equal length; returns -1 otherwise.
-fn Utils::String::hamming ($a, $b) {
-    return -1 if length($a) != length($b)
-    val @ac = split //, $a
-    val @bc = split //, $b
-    var $n = 0
-    for var $i (0..$#ac) {
-        $n++ if $ac[$i] ne $bc[$i]
-    }
-    $n
-}
-
-## Sørensen–Dice coefficient over character bigrams. 1.0 = identical,
-## 0.0 = no shared bigrams. Better than levenshtein for fuzzy "did
-## you mean" matching across short strings. Strings shorter than 2
-## chars return 1.0 if equal, else 0.0.
-fn Utils::String::dice_coefficient ($a, $b) {
-    if (length($a) < 2 || length($b) < 2) {
-        return $a eq $b ? 1.0 : 0.0
-    }
-    var %ba
-    for var $i (0..length($a) - 2) {
-        $ba{substr($a, $i, 2)}++
-    }
-    var $matches = 0
-    for var $i (0..length($b) - 2) {
-        val $bg = substr($b, $i, 2)
-        if (defined($ba{$bg}) && $ba{$bg} > 0) {
-            $matches++
-            $ba{$bg}--
-        }
-    }
-    val $total = (length($a) - 1) + (length($b) - 1)
-    (2.0 * $matches) / $total
-}
-
-# ── search ───────────────────────────────────────────────────────────
-
-## All non-overlapping start positions of $needle in $s, low-to-high.
-## Returns () if $needle is empty or absent.
-fn Utils::String::find_all_indices ($s, $needle) {
-    return () if length($needle) == 0
-    var @out
-    var $i = 0
-    val $w = length($needle)
-    while (($i = index($s, $needle, $i)) >= 0) {
-        push @out, $i
-        $i += $w
-    }
-    @out
-}
-
-# ── partition ────────────────────────────────────────────────────────
-
-## Split $s at the FIRST occurrence of $sep. Returns
-## ($before, $sep, $after). Returns ($s, "", "") if $sep is absent.
-fn Utils::String::partition ($s, $sep) {
-    val $i = index($s, $sep)
-    return ($s, "", "") if $i < 0
-    (substr($s, 0, $i), $sep, substr($s, $i + length($sep)))
-}
+# ── partition (right) ────────────────────────────────────────────────
 
 ## Split $s at the LAST occurrence of $sep. Returns
 ## ($before, $sep, $after). Returns ("", "", $s) if $sep is absent.
@@ -351,34 +89,6 @@ fn Utils::String::rpartition ($s, $sep) {
     val $i = rindex($s, $sep)
     return ("", "", $s) if $i < 0
     (substr($s, 0, $i), $sep, substr($s, $i + length($sep)))
-}
-
-## Extract the substring between the first $open and the next $close
-## after it. Returns "" if either marker is missing. Markers are
-## excluded from the result.
-fn Utils::String::between ($s, $open, $close) {
-    val $i = index($s, $open)
-    return "" if $i < 0
-    val $start = $i + length($open)
-    val $j = index($s, $close, $start)
-    return "" if $j < 0
-    substr($s, $start, $j - $start)
-}
-
-# ── chunking ─────────────────────────────────────────────────────────
-
-## Split $s into successive chunks of $size chars. The last chunk
-## may be shorter. Returns an array of strings; () if $size <= 0.
-fn Utils::String::chunks ($s, $size) {
-    return () if $size <= 0
-    var @out
-    val $n = length($s)
-    var $i = 0
-    while ($i < $n) {
-        push @out, substr($s, $i, $size)
-        $i += $size
-    }
-    @out
 }
 
 # ── masking ──────────────────────────────────────────────────────────
@@ -410,14 +120,7 @@ fn Utils::String::expand_tabs ($s, $width = 4) {
     $s =~ s/\t/$pad/gr
 }
 
-# ── encoding ─────────────────────────────────────────────────────────
-
-## ROT-13 on ASCII letters; everything else untouched. Self-inverse.
-fn Utils::String::rot13 ($s) {
-    $s =~ tr/A-Za-z/N-ZA-Mn-za-m/r
-}
-
-# ── wrap / unwrap ────────────────────────────────────────────────────
+# ── unwrap ───────────────────────────────────────────────────────────
 
 ## Strip $prefix from the start AND $suffix from the end of $s, but
 ## only if BOTH match. Otherwise returns $s unchanged. If $suffix is
@@ -430,17 +133,4 @@ fn Utils::String::unwrap ($s, $prefix, $suffix = undef) {
     return $s unless substr($s, 0, $lp) eq $prefix
     return $s unless substr($s, -$ls) eq $suf
     substr($s, $lp, length($s) - $lp - $ls)
-}
-
-# ── predicates (extras) ──────────────────────────────────────────────
-
-## True if $s is undef, empty, or contains only whitespace.
-fn Utils::String::is_blank ($s) {
-    !defined($s) || $s =~ /^\s*$/
-}
-
-## True if $s reads the same forwards and backwards (UTF-8 code
-## points, not graphemes — same caveat as `reverse_chars`).
-fn Utils::String::is_palindrome ($s) {
-    $s eq Utils::String::reverse_chars($s)
 }

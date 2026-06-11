@@ -6,12 +6,13 @@
 ##
 ##   use Utils
 ##   Utils::String::slugify("Hello, World!")
-##   Utils::List::chunk([1..10], 3)
-##   Utils::Hash::deep_merge(\%a, \%b)
+##   Utils::Hash::deep_get(\%cfg, "db.pool.max")
+##   Utils::Path::compound_ext("archive.tar.gz")
 ##
 ## Every function in this package is a *composite* — it does work that
 ## isn't a one-call wrapper around a stryke builtin. Things stryke already
-## ships (`length`, `keys`, `sort`, `uc`, `sprintf`, `time`, `mkdir`, …)
+## ships (`length`, `keys`, `sort`, `uc`, `sprintf`, `time`, `mkdir`,
+## `deep_merge`, `chunk`, `uniq`, `clamp`, `format_bytes`, `basename`, …)
 ## are NOT re-exported here.
 
 package Utils
