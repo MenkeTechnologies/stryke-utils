@@ -22,10 +22,13 @@ val @words = grep { length }
              map  { trim(lc $_) =~ s/[^a-z']//gr }
              split /\s+/, $text
 
-# Count occurrences, then sort by count desc.
-val $counts = count_by(\@words, sub ($w) { $w })
-val @pairs  = sort { $counts->{$b} <=> $counts->{$a} || $a cmp $b }
-              keys %$counts
+# Count occurrences with a plain tally, then sort by count desc.
+# (count_by's block $_ doesn't bind per-element over this map-built list —
+# strykelang BUG-308 — so a manual ++ is the reliable form here.)
+var %freq
+$freq{$_}++ for @words
+val @pairs = sort { $freq{$b} <=> $freq{$a} || $a cmp $b }
+             keys %freq
 
 p "=== word frequency ==="
 p "total tokens : " . format_number(scalar(@words))
@@ -33,7 +36,7 @@ p "unique words : " . format_number(scalar(@pairs))
 p ""
 p "top 5:"
 for val $w (@pairs[0..4]) {
-    val $n   = $counts->{$w}
+    val $n   = $freq{$w}
     val $pct = format_percent($n / scalar(@words), 1)
     p sprintf("  %s  %3d  %s",
               pad_right($w, 12), $n, $pct)
