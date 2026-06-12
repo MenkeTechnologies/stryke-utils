@@ -118,3 +118,5 @@ jobs:
         run: s pkg install -g .
       - name: Run t/ test suite
         run: s test t/
+      - name: Verify doc counts match source
+        run: scripts/check-counts.sh

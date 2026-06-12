@@ -208,18 +208,27 @@ s -e 'print slugify($ARGV[0])' -- "Hello, World!"
 
 ```sh
 s test t/                       # assertions across every public function
+make check-counts               # verify every doc count matches the source
 ```
 
 `t/test_utils.stk` covers every public function with at least one
 round-trip / boundary assertion and exits TAP-style via `test_run`.
+
+`scripts/check-counts.sh` derives the per-sublib fn counts, the total,
+the assertion count, and the example count straight from `lib/`, `t/`,
+and `examples/`, then fails if any number quoted in `README.md` or
+`docs/*.html` disagrees — so the hand-written doc numbers can't silently
+rot. It runs in CI on every push.
 
 ## [0x07] Layout
 
 ```
 stryke-utils/
   stryke.toml                  # pure-stryke package manifest (no [ffi])
-  Makefile                     # test / install / clean
+  Makefile                     # test / check-counts / install / clean
   LICENSE                      # MIT
+  scripts/
+    check-counts.sh            # doc-count invariant (CI-enforced)
   lib/
     Utils.stk                  # `use Utils` — pulls all six sublibs
     String.stk                 # `use Utils::String`
