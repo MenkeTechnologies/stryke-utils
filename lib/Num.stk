@@ -157,3 +157,17 @@ fn Utils::Num::remap ($x, $in_lo, $in_hi, $out_lo, $out_hi) {
     die "Utils::Num::remap: degenerate input range ($in_lo == $in_hi)" if $in_lo == $in_hi
     $out_lo + ($x - $in_lo) * ($out_hi - $out_lo) / ($in_hi - $in_lo)
 }
+
+## Greatest common divisor of two integers via the Euclidean algorithm. Operates
+## on absolute values, so sign is ignored; gcd(0, 0) is 0 and gcd(n, 0) is |n|.
+## gcd(12, 18) → 6. Useful for reducing fractions and aspect ratios.
+fn Utils::Num::gcd ($a, $b) {
+    var $x = abs(int($a))
+    var $y = abs(int($b))
+    while ($y != 0) {
+        val $t = $x % $y
+        $x = $y
+        $y = $t
+    }
+    $x
+}
