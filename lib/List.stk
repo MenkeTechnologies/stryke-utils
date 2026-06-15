@@ -54,6 +54,23 @@ fn Utils::List::windows ($items, $size) {
     \@out
 }
 
+## Consecutive non-overlapping chunks of length $size (the last is short if the
+## list does not divide evenly) — the partition counterpart to windows.
+##   chunk([1,2,3,4,5], 2) → [[1,2],[3,4],[5]]
+fn Utils::List::chunk ($items, $size) {
+    die "Utils::List::chunk: size must be >= 1" if $size < 1
+    val @src = @$items
+    var @out
+    var $i = 0
+    val $n = scalar(@src)
+    while ($i < $n) {
+        val $last = ($i + $size - 1 < $n - 1) ? ($i + $size - 1) : ($n - 1)
+        push @out, [ @src[$i..$last] ]
+        $i += $size
+    }
+    \@out
+}
+
 # ── products ─────────────────────────────────────────────────────────
 
 ## Cartesian pairs of two lists, $a-major order. (The variadic N-list

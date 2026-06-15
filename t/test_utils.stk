@@ -90,6 +90,18 @@ assert_eq $wn->[2][1], 4,                 "windows[2][1]"
 val $wn1 = Utils::List::windows([1,2], 3)
 assert_eq scalar(@$wn1), 0,               "windows size > len → empty"
 
+# chunk: non-overlapping partition (last chunk may be short).
+val $ck = Utils::List::chunk([1,2,3,4,5], 2)
+assert_eq scalar(@$ck), 3,                "chunk: 5/2 → 3 chunks"
+assert_eq $ck->[0][0], 1,                 "chunk[0][0]"
+assert_eq $ck->[1][1], 4,                 "chunk[1][1]"
+assert_eq scalar(@{ $ck->[2] }), 1,       "chunk: last chunk is short"
+assert_eq $ck->[2][0], 5,                 "chunk: last element"
+val $ck2 = Utils::List::chunk([1,2,3,4], 2)
+assert_eq scalar(@$ck2), 2,               "chunk: even split"
+assert_eq scalar(@{ Utils::List::chunk([], 3) }), 0, "chunk: empty list"
+assert_dies fn { Utils::List::chunk([1,2], 0) }, "chunk: rejects size < 1"
+
 # ── Utils::Hash ──────────────────────────────────────────────────────
 val $dm = Utils::Hash::deep_merge_all(
     {a=>{x=>1, y=>2}, b=>1},
