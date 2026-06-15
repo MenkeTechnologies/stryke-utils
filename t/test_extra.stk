@@ -17,6 +17,14 @@ assert_eq Utils::Num::clamp01(1.5),                 1,      "clamp01: above rang
 assert_eq Utils::Num::clamp01(-0.2),                0,      "clamp01: below range"
 assert_eq Utils::Num::clamp01(0.5),                 0.5,    "clamp01: in range"
 
+# remap: linear rescale between two ranges.
+assert_eq Utils::Num::remap(5, 0, 10, 0, 100),      50,     "remap: midpoint scales to 50"
+assert_eq Utils::Num::remap(0, 0, 10, 20, 30),      20,     "remap: low end maps to out_lo"
+assert_eq Utils::Num::remap(10, 0, 10, 20, 30),     30,     "remap: high end maps to out_hi"
+assert_eq Utils::Num::remap(15, 0, 10, 0, 100),     150,    "remap: extrapolates outside the input range"
+assert_eq Utils::Num::remap(5, 0, 10, 100, 0),      50,     "remap: inverted output range"
+assert_dies fn { Utils::Num::remap(1, 5, 5, 0, 1) },        "remap: rejects a degenerate input range"
+
 # ── Utils::List ──────────────────────────────────────────────────────
 assert_eq Utils::List::count_where([1, 2, 3, 4], fn ($x) { $x > 2 }), 2, "count_where: 2 over 2"
 assert_eq Utils::List::count_where([], fn ($x) { 1 }),                0, "count_where: empty list"

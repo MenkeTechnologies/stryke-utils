@@ -149,3 +149,11 @@ fn Utils::Num::round_sig ($x, $sig = 3) {
 fn Utils::Num::clamp01 ($x) {
     $x < 0 ? 0 : ($x > 1 ? 1 : $x)
 }
+
+## Linearly remap $x from the input range [$in_lo, $in_hi] to the output range
+## [$out_lo, $out_hi]. remap(5, 0, 10, 0, 100) → 50. Values outside the input
+## range extrapolate. Dies if the input range is degenerate ($in_lo == $in_hi).
+fn Utils::Num::remap ($x, $in_lo, $in_hi, $out_lo, $out_hi) {
+    die "Utils::Num::remap: degenerate input range ($in_lo == $in_hi)" if $in_lo == $in_hi
+    $out_lo + ($x - $in_lo) * ($out_hi - $out_lo) / ($in_hi - $in_lo)
+}
