@@ -14,7 +14,7 @@
 
 ### `[BOUNDARY HELPERS // EVERYTHING ELSE IS A STRYKE BUILTIN]`
 
-> *"111 composites the language doesn't already ship. Cross-checked against `%b` — zero overlap."*
+> *"113 composites the language doesn't already ship. Cross-checked against `%b` — zero overlap."*
 
 `stryke-utils` is a small pure-stryke utility library: six sublibraries (`String`, `List`, `Hash`, `Num`, `Time`, `Path`) of higher-level composites that aren't already in stryke core. No `[ffi]` table, no cdylib, no helper binary — just `.stk` modules loaded on `use Utils`. Created by MenkeTechnologies.
 
@@ -49,7 +49,7 @@ inclusion.
 | Tier | Properties | Examples |
 |---|---|---|
 | stryke core (`%b`, 10k+ entries) | builtins everyone needs everywhere | `length`, `keys`, `uc`, `sort`, `time`, `sprintf`, `slugify`, `chunk`, `deep_merge`, `format_bytes`, `levenshtein`, `basename`, … |
-| `stryke-utils` (opt-in, 111 fns) | path-aware variants, n-ary wrappers, regex composites, the long tail | `deep_merge_all`, `parse_duration`, `compound_ext`, `round_to_multiple`, `pad_center`, `escape_shell`, `mask_middle`, `unwrap`, `windows`, `difference`/`intersection`/`union` |
+| `stryke-utils` (opt-in, 113 fns) | path-aware variants, n-ary wrappers, regex composites, the long tail | `deep_merge_all`, `parse_duration`, `compound_ext`, `round_to_multiple`, `pad_center`, `escape_shell`, `mask_middle`, `unwrap`, `windows`, `difference`/`intersection`/`union` |
 
 Every function in this repo is cross-checked against `%b` at build time
 — zero name collisions with builtins. The two exceptions, `Utils::Path::join`
