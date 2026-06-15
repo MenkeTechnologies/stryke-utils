@@ -94,7 +94,7 @@
             <span class="sep">/</span>
             <a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta" target="_blank" rel="noopener noreferrer">Meta</a>
           </nav>
-          <p class="docs-build-line">6 sublibraries &middot; 82 composite functions &middot; zero builtin re-wraps &middot; no cdylib, no helper binary &middot; <code>use Utils</code> pulls everything in one pass</p>
+          <p class="docs-build-line">6 sublibraries &middot; 108 composite functions &middot; zero builtin re-wraps &middot; no cdylib, no helper binary &middot; <code>use Utils</code> pulls everything in one pass</p>
         </div>
         <div class="tutorial-toolbar">
           <button type="button" class="btn btn-secondary" id="btnTheme" title="Toggle light/dark">Theme</button>
@@ -116,7 +116,7 @@
 
     <main class="tutorial-main">
       <h2 class="tutorial-title"><span class="step-hash">&gt;_</span>STRYKE-UTILS</h2>
-      <p class="tutorial-subtitle"><strong>Boundary helpers only. Cross-checked against <code>%b</code>.</strong> stryke-utils ships six sublibraries (<code>String</code>, <code>List</code>, <code>Hash</code>, <code>Num</code>, <code>Time</code>, <code>Path</code>) of higher-level helpers that aren't part of stryke core. The obvious composites &mdash; <code>slugify</code>, <code>chunk</code>, <code>deep_merge</code>, <code>format_bytes</code>, <code>levenshtein</code>, <code>basename</code>, <code>common_prefix</code>, ~70 more &mdash; have all landed in <code>%b</code> as builtins, so they're not duplicated here. What's left is the long tail: <code>deep_merge_all</code>, <code>parse_duration</code>, <code>compound_ext</code>, <code>round_to_multiple</code>, <code>pad_center</code>, <code>escape_shell</code>, <code>mask_middle</code>, <code>unwrap</code>, <code>windows</code>, set ops. 82 functions across 6 modules. Pure stryke: no <code>[ffi]</code> table, no cdylib, no helper binary &mdash; just <code>.stk</code> modules loaded by stryke's normal package resolver.</p>
+      <p class="tutorial-subtitle"><strong>Boundary helpers only. Cross-checked against <code>%b</code>.</strong> stryke-utils ships six sublibraries (<code>String</code>, <code>List</code>, <code>Hash</code>, <code>Num</code>, <code>Time</code>, <code>Path</code>) of higher-level helpers that aren't part of stryke core. The obvious composites &mdash; <code>slugify</code>, <code>chunk</code>, <code>deep_merge</code>, <code>format_bytes</code>, <code>levenshtein</code>, <code>basename</code>, <code>common_prefix</code>, ~70 more &mdash; have all landed in <code>%b</code> as builtins, so they're not duplicated here. What's left is the long tail: <code>deep_merge_all</code>, <code>parse_duration</code>, <code>compound_ext</code>, <code>round_to_multiple</code>, <code>pad_center</code>, <code>escape_shell</code>, <code>mask_middle</code>, <code>unwrap</code>, <code>windows</code>, set ops. 108 functions across 6 modules. Pure stryke: no <code>[ffi]</code> table, no cdylib, no helper binary &mdash; just <code>.stk</code> modules loaded by stryke's normal package resolver.</p>
 
       <section class="tutorial-section">
         <h2>The 6 sublibraries</h2>

@@ -132,3 +132,108 @@ fn Utils::Hash::unflatten_keys ($h) {
     Utils::Hash::deep_set(\%out, $_, $h->{$_}) for keys %$h
     \%out
 }
+
+# ── selection & combination ──────────────────────────────────────────
+
+## Delete the leaf at dot-path $path, mutating $h in place; returns $h.
+## A no-op if any path segment is missing. Inverse intent of `deep_set`.
+##   deep_delete({a => {b => 1, c => 2}}, "a.b") → {a => {c => 2}}
+fn Utils::Hash::deep_delete ($h, $path) {
+    val @segs = split /\./, $path
+    val $leaf = pop @segs
+    var $cur = $h
+    for val $seg (@segs) {
+        return $h unless ref($cur) eq "HASH" && exists $cur->{$seg}
+        $cur = $cur->{$seg}
+    }
+    delete $cur->{$leaf} if ref($cur) eq "HASH"
+    $h
+}
+
+## A copy of $h with keys from $def added only where $h lacks them.
+##   defaults({a => 1}, {a => 9, b => 2}) → {a => 1, b => 2}
+fn Utils::Hash::defaults ($h, $def) {
+    var %out = %$h
+    for val $k (keys %$def) {
+        $out{$k} = $def->{$k} unless exists $out{$k}
+    }
+    \%out
+}
+
+## Sorted list of every leaf dot-path in a nested hash (via `flatten_keys`).
+##   deep_keys({a => {b => 1}, c => 2}) → ["a.b", "c"]
+fn Utils::Hash::deep_keys ($h) {
+    [ sort keys %{ Utils::Hash::flatten_keys($h) } ]
+}
+
+## Leaf values of a nested hash, in `deep_keys` order.
+fn Utils::Hash::deep_values ($h) {
+    val $flat = Utils::Hash::flatten_keys($h)
+    [ map { $flat->{$_} } sort keys %$flat ]
+}
+
+## Frequency of each (stringified) value across the hash.
+##   count_values({a => 1, b => 1, c => 2}) → {1 => 2, 2 => 1}
+fn Utils::Hash::count_values ($h) {
+    var %out
+    for val $k (keys %$h) {
+        val $v = defined($h->{$k}) ? "$h->{$k}" : "\0undef"
+        $out{$v}++
+    }
+    \%out
+}
+
+## Build a new hash by mapping each (key, value) → (newkey, newval) via $f.
+##   map_entries({a => 1}, fn ($k, $v) { (uc($k), $v * 10) }) → {A => 10}
+fn Utils::Hash::map_entries ($h, $f) {
+    var %out
+    for val $k (keys %$h) {
+        val ($nk, $nv) = $f->($k, $h->{$k})
+        $out{$nk} = $nv
+    }
+    \%out
+}
+
+## Merge $a and $b; on a key present in both, the value is $f->(a_val, b_val).
+##   merge_with(fn ($x, $y) { $x + $y }, {a => 1}, {a => 2, b => 3}) → {a => 3, b => 3}
+fn Utils::Hash::merge_with ($f, $a, $b) {
+    var %out = %$a
+    for val $k (keys %$b) {
+        $out{$k} = exists($out{$k}) ? $f->($out{$k}, $b->{$k}) : $b->{$k}
+    }
+    \%out
+}
+
+## Keep only (key, value) pairs for which $pred->($k, $v) is true.
+##   pick_by({a => 1, b => 2}, fn ($k, $v) { $v > 1 }) → {b => 2}
+fn Utils::Hash::pick_by ($h, $pred) {
+    var %out
+    for val $k (keys %$h) {
+        $out{$k} = $h->{$k} if $pred->($k, $h->{$k})
+    }
+    \%out
+}
+
+## Shallow diff of two hashes by stringified value. Returns
+## { changed => {k => [old, new]}, added => {k => v}, removed => {k => v} }.
+fn Utils::Hash::hash_diff ($a, $b) {
+    var %changed
+    var %added
+    var %removed
+    for val $k (keys %$a) {
+        if (!exists $b->{$k}) {
+            $removed{$k} = $a->{$k}
+        } elsif (Utils::Hash::_vstr($a->{$k}) ne Utils::Hash::_vstr($b->{$k})) {
+            $changed{$k} = [ $a->{$k}, $b->{$k} ]
+        }
+    }
+    for val $k (keys %$b) {
+        $added{$k} = $b->{$k} unless exists $a->{$k}
+    }
+    { changed => \%changed, added => \%added, removed => \%removed }
+}
+
+## Stable stringification of a scalar for value comparison (undef-safe).
+fn Utils::Hash::_vstr ($v) {
+    defined($v) ? "$v" : "\0undef"
+}

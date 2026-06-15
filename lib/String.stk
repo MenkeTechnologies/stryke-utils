@@ -262,3 +262,22 @@ fn Utils::String::repeat_to ($unit, $width) {
     val $reps = int($width / length($unit)) + 1
     substr($unit x $reps, 0, $width)
 }
+
+# ── one-sided strip ──────────────────────────────────────────────────
+
+## Strip $prefix from the front of $s if present, else return $s unchanged.
+## The one-sided counterpart to `unwrap`. remove_prefix("unwrap", "un") → "wrap".
+fn Utils::String::remove_prefix ($s, $prefix) {
+    return $s if length($prefix) == 0
+    index($s, $prefix) == 0 ? substr($s, length($prefix)) : $s
+}
+
+## Strip $suffix from the end of $s if present, else return $s unchanged.
+## remove_suffix("file.bak", ".bak") → "file".
+fn Utils::String::remove_suffix ($s, $suffix) {
+    val $n = length($suffix)
+    return $s if $n == 0
+    (length($s) >= $n && substr($s, length($s) - $n) eq $suffix)
+        ? substr($s, 0, length($s) - $n)
+        : $s
+}

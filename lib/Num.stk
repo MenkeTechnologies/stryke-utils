@@ -115,3 +115,37 @@ fn Utils::Num::mean_abs_dev ($nums) {
     $dev += abs($_ - $mean) for @$nums
     $dev / $n
 }
+
+# ── comparison & conversion ──────────────────────────────────────────
+
+## True if $a and $b are within $tol absolute (default 1e-9) OR within $rel
+## relative to the larger magnitude (default 1e-9). The float-safe `==`.
+##   is_close(0.1 + 0.2, 0.3) → 1
+fn Utils::Num::is_close ($a, $b, $tol = 1e-9, $rel = 1e-9) {
+    val $diff = abs($a - $b)
+    return 1 if $diff <= $tol
+    val $scale = abs($a) > abs($b) ? abs($a) : abs($b)
+    $diff <= $rel * $scale ? 1 : 0
+}
+
+## Degrees → radians. to_radians(180) → 3.14159…
+fn Utils::Num::to_radians ($deg) {
+    $deg * 3.141592653589793 / 180
+}
+
+## Radians → degrees. to_degrees(3.141592653589793) → 180.
+fn Utils::Num::to_degrees ($rad) {
+    $rad * 180 / 3.141592653589793
+}
+
+## Round $x to $sig significant figures (default 3). round_sig(3.14159, 3) → 3.14.
+fn Utils::Num::round_sig ($x, $sig = 3) {
+    die "Utils::Num::round_sig: sig must be >= 1" if $sig < 1
+    return 0 if $x == 0
+    sprintf("%.*g", $sig, $x) + 0
+}
+
+## Clamp $x into [0, 1]. clamp01(1.5) → 1; clamp01(-0.2) → 0.
+fn Utils::Num::clamp01 ($x) {
+    $x < 0 ? 0 : ($x > 1 ? 1 : $x)
+}

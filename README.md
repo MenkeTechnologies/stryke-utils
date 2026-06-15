@@ -14,7 +14,7 @@
 
 ### `[BOUNDARY HELPERS // EVERYTHING ELSE IS A STRYKE BUILTIN]`
 
-> *"82 composites the language doesn't already ship. Cross-checked against `%b` — zero overlap."*
+> *"108 composites the language doesn't already ship. Cross-checked against `%b` — zero overlap."*
 
 `stryke-utils` is a small pure-stryke utility library: six sublibraries (`String`, `List`, `Hash`, `Num`, `Time`, `Path`) of higher-level composites that aren't already in stryke core. No `[ffi]` table, no cdylib, no helper binary — just `.stk` modules loaded on `use Utils`. Created by MenkeTechnologies.
 
@@ -49,7 +49,7 @@ inclusion.
 | Tier | Properties | Examples |
 |---|---|---|
 | stryke core (`%b`, 10k+ entries) | builtins everyone needs everywhere | `length`, `keys`, `uc`, `sort`, `time`, `sprintf`, `slugify`, `chunk`, `deep_merge`, `format_bytes`, `levenshtein`, `basename`, … |
-| `stryke-utils` (opt-in, 82 fns) | path-aware variants, n-ary wrappers, regex composites, the long tail | `deep_merge_all`, `parse_duration`, `compound_ext`, `round_to_multiple`, `pad_center`, `escape_shell`, `mask_middle`, `unwrap`, `windows`, `difference`/`intersection`/`union` |
+| `stryke-utils` (opt-in, 108 fns) | path-aware variants, n-ary wrappers, regex composites, the long tail | `deep_merge_all`, `parse_duration`, `compound_ext`, `round_to_multiple`, `pad_center`, `escape_shell`, `mask_middle`, `unwrap`, `windows`, `difference`/`intersection`/`union` |
 
 Every function in this repo is cross-checked against `%b` at build time
 — zero name collisions with builtins. The two exceptions, `Utils::Path::join`
@@ -143,14 +143,14 @@ Utils::Time::parse_duration("90m")
 
 | Module | `use` | fns | Surface |
 |---|---|---|---|
-| String | `use Utils::String` | 24 | `ltrim` &middot; `rtrim` &middot; `pad_center` &middot; `visible_width` &middot; `count_occurrences` &middot; `reverse_chars` &middot; `squeeze` &middot; `compact_whitespace` &middot; `rpartition` &middot; `mask_middle` &middot; `escape_shell` &middot; `expand_tabs` &middot; `unwrap` &middot; `ellipsize` &middot; `truncate_words` &middot; `nth_index` &middot; `splitn` &middot; `capitalize_first` &middot; `uncapitalize` &middot; `titleize` &middot; `normalize_newlines` &middot; `collapse_blank_lines` &middot; `strip_quotes` &middot; `repeat_to` |
-| List   | `use Utils::List`   | 9  | `difference` &middot; `intersection` &middot; `union` &middot; `windows` &middot; `cartesian` &middot; `rle_encode` &middot; `rle_decode` &middot; `top_n` &middot; `bottom_n` |
-| Hash   | `use Utils::Hash`   | 10 | `deep_merge_all` &middot; `deep_get` &middot; `deep_set` &middot; `deep_has` &middot; `map_keys` &middot; `map_values` &middot; `all_hashes` &middot; `rename_keys` &middot; `flatten_keys` &middot; `unflatten_keys` |
-| Num    | `use Utils::Num`    | 9  | `round_to_multiple` &middot; `ordinal` &middot; `percent_change` &middot; `weighted_avg` &middot; `percentile_of` &middot; `digit_sum` &middot; `digit_count` &middot; `pct_of` &middot; `mean_abs_dev` |
-| Time   | `use Utils::Time`   | 13 | `parse_duration` &middot; `ago` &middot; `format_iso8601` &middot; `format_date` &middot; `format_time` &middot; `timed` &middot; `day_of_week` &middot; `format_human` &middot; `format_clock` &middot; `add_duration` &middot; `sub_duration` &middot; `parse_iso8601` (+ `_days_from_civil` helper) |
-| Path   | `use Utils::Path`   | 17 | `ext` &middot; `compound_ext` &middot; `without_ext` &middot; `set_ext` &middot; `splitext` &middot; `join` &middot; `normalize` &middot; `is_absolute` &middot; `is_bare` &middot; `relative` &middot; `with_name` &middot; `add_suffix` &middot; `strip_trailing_slash` &middot; `ensure_trailing_slash` &middot; `segments` &middot; `depth` &middot; `is_under` |
+| String | `use Utils::String` | 26 | `ltrim` &middot; `rtrim` &middot; `pad_center` &middot; `visible_width` &middot; `count_occurrences` &middot; `reverse_chars` &middot; `squeeze` &middot; `compact_whitespace` &middot; `rpartition` &middot; `mask_middle` &middot; `escape_shell` &middot; `expand_tabs` &middot; `unwrap` &middot; `ellipsize` &middot; `truncate_words` &middot; `nth_index` &middot; `splitn` &middot; `capitalize_first` &middot; `uncapitalize` &middot; `titleize` &middot; `normalize_newlines` &middot; `collapse_blank_lines` &middot; `strip_quotes` &middot; `repeat_to` &middot; `remove_prefix` &middot; `remove_suffix` |
+| List   | `use Utils::List`   | 10 | `difference` &middot; `intersection` &middot; `union` &middot; `windows` &middot; `cartesian` &middot; `rle_encode` &middot; `rle_decode` &middot; `top_n` &middot; `bottom_n` &middot; `count_where` |
+| Hash   | `use Utils::Hash`   | 19 | `deep_merge_all` &middot; `deep_get` &middot; `deep_set` &middot; `deep_has` &middot; `map_keys` &middot; `map_values` &middot; `all_hashes` &middot; `rename_keys` &middot; `flatten_keys` &middot; `unflatten_keys` &middot; `deep_delete` &middot; `defaults` &middot; `deep_keys` &middot; `deep_values` &middot; `count_values` &middot; `map_entries` &middot; `merge_with` &middot; `pick_by` &middot; `hash_diff` |
+| Num    | `use Utils::Num`    | 14 | `round_to_multiple` &middot; `ordinal` &middot; `percent_change` &middot; `weighted_avg` &middot; `percentile_of` &middot; `digit_sum` &middot; `digit_count` &middot; `pct_of` &middot; `mean_abs_dev` &middot; `is_close` &middot; `to_radians` &middot; `to_degrees` &middot; `round_sig` &middot; `clamp01` |
+| Time   | `use Utils::Time`   | 16 | `parse_duration` &middot; `ago` &middot; `format_iso8601` &middot; `format_date` &middot; `format_time` &middot; `timed` &middot; `day_of_week` &middot; `format_human` &middot; `format_clock` &middot; `add_duration` &middot; `sub_duration` &middot; `parse_iso8601` &middot; `quarter` &middot; `is_same_day` &middot; `next_weekday` (+ `_days_from_civil` helper) |
+| Path   | `use Utils::Path`   | 23 | `ext` &middot; `compound_ext` &middot; `without_ext` &middot; `set_ext` &middot; `splitext` &middot; `join` &middot; `normalize` &middot; `is_absolute` &middot; `is_bare` &middot; `relative` &middot; `with_name` &middot; `add_suffix` &middot; `strip_trailing_slash` &middot; `ensure_trailing_slash` &middot; `segments` &middot; `depth` &middot; `is_under` &middot; `is_hidden` &middot; `expand_user` &middot; `sibling` &middot; `ancestors` &middot; `with_stem` &middot; `common_ancestor` |
 
-82 functions total. Every sublibrary stands alone — no FFI, no required
+108 functions total. Every sublibrary stands alone — no FFI, no required
 environment, no state between calls. Drop a single `lib/*.stk` into
 another project and it works.
 

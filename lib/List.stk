@@ -120,3 +120,16 @@ fn Utils::List::bottom_n ($items, $n, $key) {
     val $last = $n > @scored ? $#scored : $n - 1
     [ @scored[0 .. $last] ]
 }
+
+# ── counting ─────────────────────────────────────────────────────────
+
+## How many items satisfy $pred. The counting companion to the `grep`
+## builtin (which returns the matches).
+##   count_where([1,2,3,4], fn ($x) { $x > 2 }) → 2
+fn Utils::List::count_where ($items, $pred) {
+    var $n = 0
+    for val $x (@$items) {
+        $n++ if $pred->($x)
+    }
+    $n
+}

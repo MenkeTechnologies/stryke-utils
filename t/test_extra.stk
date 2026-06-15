@@ -1,0 +1,90 @@
+## t/test_extra.stk — assertion tests for the v0.7.0 additions across all
+## five sublibs. Pure stryke; every function tested here was verified absent
+## from stryke core before it was added (no builtin duplicated).
+
+use Utils
+
+# ── Utils::Num ───────────────────────────────────────────────────────
+assert_eq Utils::Num::is_close(0.1 + 0.2, 0.3),     1, "is_close: float-equal within tol"
+assert_eq Utils::Num::is_close(1, 1.5),             0, "is_close: far apart"
+assert_eq Utils::Num::is_close(100, 100.0000001),   1, "is_close: relative tolerance"
+assert_ok Utils::Num::is_close(Utils::Num::to_degrees(Utils::Num::to_radians(90)), 90),
+    "to_radians/to_degrees round-trip ≈ 90"
+assert_eq Utils::Num::round_sig(3.14159, 3),        3.14,   "round_sig: 3 sig figs"
+assert_eq Utils::Num::round_sig(12345, 2),          12000,  "round_sig: magnitude preserved"
+assert_eq Utils::Num::round_sig(0, 3),              0,      "round_sig: zero"
+assert_eq Utils::Num::clamp01(1.5),                 1,      "clamp01: above range"
+assert_eq Utils::Num::clamp01(-0.2),                0,      "clamp01: below range"
+assert_eq Utils::Num::clamp01(0.5),                 0.5,    "clamp01: in range"
+
+# ── Utils::List ──────────────────────────────────────────────────────
+assert_eq Utils::List::count_where([1, 2, 3, 4], fn ($x) { $x > 2 }), 2, "count_where: 2 over 2"
+assert_eq Utils::List::count_where([], fn ($x) { 1 }),                0, "count_where: empty list"
+
+# ── Utils::Hash ──────────────────────────────────────────────────────
+val $dd = Utils::Hash::deep_delete({ a => { b => 1, c => 2 } }, "a.b")
+assert_ok !exists($dd->{a}{b}),  "deep_delete: leaf removed"
+assert_eq $dd->{a}{c},      2,   "deep_delete: sibling kept"
+
+val $def = Utils::Hash::defaults({ a => 1 }, { a => 9, b => 2 })
+assert_eq $def->{a},        1,   "defaults: existing key wins"
+assert_eq $def->{b},        2,   "defaults: missing key filled"
+
+val @dk = @{ Utils::Hash::deep_keys({ a => { b => 1 }, c => 2 }) }
+assert_eq join(",", @dk),   "a.b,c", "deep_keys: sorted dotted paths"
+val @dv = @{ Utils::Hash::deep_values({ a => { b => 1 }, c => 2 }) }
+assert_eq join(",", @dv),   "1,2",   "deep_values: in deep_keys order"
+
+val $cv = Utils::Hash::count_values({ a => 1, b => 1, c => 2 })
+assert_eq $cv->{1},         2,   "count_values: two keys map to 1"
+assert_eq $cv->{2},         1,   "count_values: one key maps to 2"
+
+val $me = Utils::Hash::map_entries({ a => 1 }, fn ($k, $v) { (uc($k), $v * 10) })
+assert_eq $me->{A},         10,  "map_entries: key and value transformed"
+
+val $mw = Utils::Hash::merge_with(fn ($x, $y) { $x + $y }, { a => 1 }, { a => 2, b => 3 })
+assert_eq $mw->{a},         3,   "merge_with: collision combined"
+assert_eq $mw->{b},         3,   "merge_with: non-collision passed through"
+
+val $pb = Utils::Hash::pick_by({ a => 1, b => 2 }, fn ($k, $v) { $v > 1 })
+assert_ok !exists($pb->{a}), "pick_by: a dropped"
+assert_eq $pb->{b},         2,   "pick_by: b kept"
+
+val $hd = Utils::Hash::hash_diff({ a => 1, b => 2 }, { a => 9, c => 3 })
+assert_eq $hd->{changed}{a}[0], 1, "hash_diff: changed old value"
+assert_eq $hd->{changed}{a}[1], 9, "hash_diff: changed new value"
+assert_eq $hd->{removed}{b},    2, "hash_diff: removed key"
+assert_eq $hd->{added}{c},      3, "hash_diff: added key"
+
+# ── Utils::Time ──────────────────────────────────────────────────────
+assert_eq Utils::Time::quarter(1),   1, "quarter: Jan → Q1"
+assert_eq Utils::Time::quarter(4),   2, "quarter: Apr → Q2"
+assert_eq Utils::Time::quarter(12),  4, "quarter: Dec → Q4"
+assert_dies sub { Utils::Time::quarter(13) }, "quarter: out of range dies"
+
+assert_eq Utils::Time::is_same_day(0, 3600),   1, "is_same_day: same UTC day"
+assert_eq Utils::Time::is_same_day(0, 90000),  0, "is_same_day: next day"
+
+# 1970-01-01 is Thursday (wday 4). Next Thursday strictly after is +7 days.
+assert_eq Utils::Time::next_weekday(0, 4), 604800, "next_weekday: same weekday → +7 days"
+# Next Friday (wday 5) after epoch 0 is +1 day.
+assert_eq Utils::Time::next_weekday(0, 5), 86400,  "next_weekday: tomorrow"
+
+# ── Utils::Path ──────────────────────────────────────────────────────
+assert_eq Utils::Path::is_hidden("/a/.env"),  1, "is_hidden: dotfile"
+assert_eq Utils::Path::is_hidden("/a/b"),     0, "is_hidden: plain"
+assert_eq Utils::Path::expand_user("~/x"),    "$ENV{HOME}/x", "expand_user: tilde → HOME"
+assert_eq Utils::Path::expand_user("/no/tilde"), "/no/tilde",  "expand_user: non-tilde unchanged"
+assert_eq Utils::Path::sibling("/a/b", "c"),  "/a/c", "sibling: replaces final component"
+assert_eq join(",", @{ Utils::Path::ancestors("/a/b/c") }), "/a/b,/a,/", "ancestors: nearest first"
+assert_eq Utils::Path::with_stem("/a/b.txt", "c"), "/a/c.txt", "with_stem: keeps extension"
+assert_eq Utils::Path::with_stem("/a/b", "c"),     "/a/c",     "with_stem: no extension"
+assert_eq Utils::Path::common_ancestor(["/a/b/x", "/a/b/y", "/a/c"]), "/a", "common_ancestor"
+
+# ── Utils::String ────────────────────────────────────────────────────
+assert_eq Utils::String::remove_prefix("unwrap", "un"), "wrap", "remove_prefix: present"
+assert_eq Utils::String::remove_prefix("xyz", "ab"),    "xyz",  "remove_prefix: absent"
+assert_eq Utils::String::remove_suffix("file.bak", ".bak"), "file", "remove_suffix: present"
+assert_eq Utils::String::remove_suffix("xyz", "ab"),        "xyz",  "remove_suffix: absent"
+
+test_run

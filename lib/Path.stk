@@ -203,3 +203,69 @@ fn Utils::Path::is_under ($path, $base) {
     val $bb = $b eq "/" ? "/" : "$b/"
     index($p, $bb) == 0 ? 1 : 0
 }
+
+# ── components & home ────────────────────────────────────────────────
+
+## True if the final path component begins with a dot (a hidden file).
+##   is_hidden("/a/.env") → 1; is_hidden("/a/b") → 0
+fn Utils::Path::is_hidden ($path) {
+    basename($path) =~ /^\./ ? 1 : 0
+}
+
+## Expand a leading "~" or "~/…" to $HOME (from %ENV). A bare "~" → $HOME.
+## Non-tilde paths return unchanged. expand_user("~/x") → "$HOME/x".
+fn Utils::Path::expand_user ($path) {
+    return $path unless $path =~ m{^~(/|$)}
+    val $home = $ENV{HOME} // ""
+    $path =~ s{^~}{$home}r
+}
+
+## Replace the final component of $path with $name (its sibling).
+##   sibling("/a/b", "c") → "/a/c"
+fn Utils::Path::sibling ($path, $name) {
+    val $dir = dirname($path)
+    $dir eq "/" ? "/$name" : ($dir eq "." ? $name : "$dir/$name")
+}
+
+## Every ancestor directory of $path, nearest first.
+##   ancestors("/a/b/c") → ["/a/b", "/a", "/"]
+fn Utils::Path::ancestors ($path) {
+    var @out
+    var $cur = $path
+    while (1) {
+        val $parent = dirname($cur)
+        last if $parent eq $cur
+        push @out, $parent
+        $cur = $parent
+    }
+    \@out
+}
+
+## Replace the stem (basename without extension), keeping the extension.
+##   with_stem("/a/b.txt", "c") → "/a/c.txt"
+fn Utils::Path::with_stem ($path, $stem) {
+    val $dir = dirname($path)
+    val $e = Utils::Path::ext($path)
+    val $name = $e eq "" ? $stem : "$stem.$e"
+    $dir eq "." ? $name : ($dir eq "/" ? "/$name" : "$dir/$name")
+}
+
+## Longest common ancestor directory of a list of paths, segment-wise.
+##   common_ancestor(["/a/b/x", "/a/b/y", "/a/c"]) → "/a"
+fn Utils::Path::common_ancestor ($paths) {
+    return "" unless @$paths
+    val $abs = $paths->[0] =~ m{^/} ? 1 : 0
+    var @common = @{ Utils::Path::segments($paths->[0]) }
+    for val $p (@$paths) {
+        val @segs = @{ Utils::Path::segments($p) }
+        var @next
+        for var $i (0 .. $#common) {
+            last if $i > $#segs
+            last unless $common[$i] eq $segs[$i]
+            push @next, $common[$i]
+        }
+        @common = @next
+    }
+    val $joined = join("/", @common)
+    $abs ? "/$joined" : $joined
+}
