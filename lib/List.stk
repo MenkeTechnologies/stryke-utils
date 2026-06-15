@@ -133,3 +133,23 @@ fn Utils::List::count_where ($items, $pred) {
     }
     $n
 }
+
+# ── reshaping ────────────────────────────────────────────────────────
+
+## Transpose a list of equal-length rows (a rectangular matrix): rows become
+## columns. Dies on ragged rows. An empty matrix transposes to empty.
+##   transpose([[1,2,3],[4,5,6]]) → [[1,4],[2,5],[3,6]]
+fn Utils::List::transpose ($rows) {
+    val @src = @$rows
+    return [] unless @src
+    val $cols = scalar(@{ $src[0] })
+    for val $row (@src) {
+        die "Utils::List::transpose: ragged rows (expected $cols columns)" if scalar(@$row) != $cols
+    }
+    var @out
+    return \@out if $cols < 1
+    for var $c (0 .. $cols - 1) {
+        push @out, [ map { $_->[$c] } @src ]
+    }
+    \@out
+}
