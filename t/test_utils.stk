@@ -173,6 +173,11 @@ assert_eq Utils::Num::round_to_multiple(12, 5),    10, "round_to_multiple down"
 assert_eq Utils::Num::round_to_multiple(-13, 5),  -15, "round_to_multiple negative"
 assert_eq Utils::Num::round_to_multiple(7.5, 5),   10, "round_to_multiple half"
 
+assert_eq Utils::Num::floor_to_multiple(13, 5),    10, "floor_to_multiple rounds down"
+assert_eq Utils::Num::floor_to_multiple(10, 5),    10, "floor_to_multiple keeps an exact multiple"
+assert_eq Utils::Num::floor_to_multiple(-3, 5),    -5, "floor_to_multiple goes toward -infinity"
+assert_dies fn { Utils::Num::floor_to_multiple(7, 0) }, "floor_to_multiple rejects a zero step"
+
 assert_eq Utils::Num::ordinal(1),  "1st",  "ordinal 1"
 assert_eq Utils::Num::ordinal(2),  "2nd",  "ordinal 2"
 assert_eq Utils::Num::ordinal(3),  "3rd",  "ordinal 3"

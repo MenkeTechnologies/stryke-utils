@@ -18,6 +18,14 @@ fn Utils::Num::round_to_multiple ($x, $step) {
     $r * $step
 }
 
+## Round $x DOWN to the largest multiple of $step not exceeding it (toward
+## -infinity) — the binning companion of round_to_multiple.
+## floor_to_multiple(13, 5) → 10; floor_to_multiple(-3, 5) → -5.
+fn Utils::Num::floor_to_multiple ($x, $step) {
+    die "Utils::Num::floor_to_multiple: step != 0 required" if $step == 0
+    floor($x / $step) * $step
+}
+
 # ── formatting ───────────────────────────────────────────────────────
 
 ## Ordinal suffix. ordinal(21) → "21st". Handles teens correctly.
