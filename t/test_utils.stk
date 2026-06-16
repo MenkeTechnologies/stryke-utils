@@ -59,6 +59,13 @@ assert_eq Utils::String::expand_tabs("a\tb",   2),      "a  b",         "expand_
 assert_eq Utils::String::expand_tabs("a\tb"),           "a    b",       "expand_tabs default 4"
 assert_eq Utils::String::expand_tabs("ab"),             "ab",           "expand_tabs no-tab"
 
+# unexpand_tabs: inverse of expand_tabs (leading spaces → tabs, unix `unexpand`).
+assert_eq Utils::String::unexpand_tabs("        code"), "\t\tcode",     "unexpand_tabs: 8 spaces → 2 tabs"
+assert_eq Utils::String::unexpand_tabs("      x", 4),   "\t  x",        "unexpand_tabs: partial final run stays spaces"
+assert_eq Utils::String::unexpand_tabs("a    b"),       "a    b",       "unexpand_tabs: only leading whitespace touched"
+assert_eq Utils::String::unexpand_tabs(Utils::String::expand_tabs("\t\tdeep")), "\t\tdeep", "unexpand_tabs: round-trips expand_tabs"
+assert_eq Utils::String::unexpand_tabs("    a\n        b"), "\ta\n\t\tb", "unexpand_tabs: per-line"
+
 assert_eq Utils::String::unwrap('"quoted"', '"'),       "quoted",       "unwrap symmetric"
 assert_eq Utils::String::unwrap("[x]", "[", "]"),       "x",            "unwrap asymmetric"
 assert_eq Utils::String::unwrap("plain", '"'),          "plain",        "unwrap no match"

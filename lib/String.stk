@@ -120,6 +120,20 @@ fn Utils::String::expand_tabs ($s, $width = 4) {
     $s =~ s/\t/$pad/gr
 }
 
+## Convert leading runs of $width spaces back into tabs, per line — the inverse of
+## expand_tabs (the unix `unexpand`). Only LEADING whitespace is touched, so spaces
+## inside text are preserved; a partial final run stays as spaces ("      x" with
+## width 4 → "\t  x"). Round-trips expand_tabs for tab-indented text.
+fn Utils::String::unexpand_tabs ($s, $width = 4) {
+    join("\n", map {
+        val $line = $_
+        $line =~ /^( *)(.*)$/s
+        val $lead = $1
+        val $rest = $2
+        ("\t" x int(length($lead) / $width)) . (" " x (length($lead) % $width)) . $rest
+    } split(/\n/, $s, -1))
+}
+
 # ── unwrap ───────────────────────────────────────────────────────────
 
 ## Strip $prefix from the start AND $suffix from the end of $s, but
