@@ -38,6 +38,31 @@ fn Utils::List::union ($a, $b) {
     [ uniq(@$a, @$b) ]
 }
 
+## Items in exactly ONE of the two lists — (A−B) ∪ (B−A), deduped, $a's
+## uniques first then $b's. The set-symmetric-difference companion to
+## difference/intersection/union.
+fn Utils::List::symmetric_difference ($a, $b) {
+    var %ina
+    var %inb
+    $ina{ defined($_) ? "$_" : "\0undef" }++ for @$a
+    $inb{ defined($_) ? "$_" : "\0undef" }++ for @$b
+    var %seen
+    var @out
+    for val $x (@$a) {
+        val $k = defined($x) ? "$x" : "\0undef"
+        if (!$inb{$k} && !$seen{$k}++) {
+            push @out, $x
+        }
+    }
+    for val $x (@$b) {
+        val $k = defined($x) ? "$x" : "\0undef"
+        if (!$ina{$k} && !$seen{$k}++) {
+            push @out, $x
+        }
+    }
+    \@out
+}
+
 # ── windowing ────────────────────────────────────────────────────────
 
 ## Sliding windows of length $size, step 1.
