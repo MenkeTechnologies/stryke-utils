@@ -25,6 +25,14 @@ assert_eq Utils::Num::remap(15, 0, 10, 0, 100),     150,    "remap: extrapolates
 assert_eq Utils::Num::remap(5, 0, 10, 100, 0),      50,     "remap: inverted output range"
 assert_dies fn { Utils::Num::remap(1, 5, 5, 0, 1) },        "remap: rejects a degenerate input range"
 
+# wrap: cycle a value into the half-open range [min, max).
+assert_eq Utils::Num::wrap(370, 0, 360),  10,  "wrap: above range cycles down"
+assert_eq Utils::Num::wrap(-10, 0, 360),  350, "wrap: below range cycles up"
+assert_eq Utils::Num::wrap(360, 0, 360),  0,   "wrap: upper bound is excluded (half-open)"
+assert_eq Utils::Num::wrap(5, 0, 360),    5,   "wrap: in range is unchanged"
+assert_eq Utils::Num::wrap(190, -180, 180), -170, "wrap: signed range (-180,180)"
+assert_dies fn { Utils::Num::wrap(1, 5, 5) },  "wrap: rejects an empty range"
+
 # gcd: Euclidean greatest common divisor.
 assert_eq Utils::Num::gcd(12, 18),    6,  "gcd: 12,18 → 6"
 assert_eq Utils::Num::gcd(17, 5),     1,  "gcd: coprime → 1"
