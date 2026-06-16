@@ -370,6 +370,12 @@ assert_eq Utils::Num::digit_count(1234),   4,  "digit_count"
 assert_eq Utils::Num::digit_count(0),      1,  "digit_count zero is 1"
 assert_eq Utils::Num::digit_count(-50),    2,  "digit_count abs of negative"
 
+assert_eq Utils::Num::digital_root(9875),  2,  "digital_root: 9875 → 29 → 11 → 2"
+assert_eq Utils::Num::digital_root(0),     0,  "digital_root zero"
+assert_eq Utils::Num::digital_root(9),     9,  "digital_root single digit unchanged"
+assert_eq Utils::Num::digital_root(-99),   9,  "digital_root abs of negative"
+assert_eq Utils::Num::digital_root(12345), 6,  "digital_root: 1+2+3+4+5 = 15 → 6"
+
 assert_eq Utils::Num::pct_of(25, 200),     12.5, "pct_of"
 assert_eq Utils::Num::pct_of(3, 3),        100,  "pct_of whole"
 assert_dies fn { Utils::Num::pct_of(1, 0) },     "pct_of dies on zero whole"

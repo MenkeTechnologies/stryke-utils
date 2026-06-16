@@ -91,6 +91,23 @@ fn Utils::Num::digit_count ($n) {
     length("$x")
 }
 
+## Digital root of |int($n)|: repeatedly sum the digits until one remains.
+## digital_root(9875) → 2 (29 → 11 → 2); digital_root(0) → 0. The repeated-sum
+## companion to `digit_sum`.
+fn Utils::Num::digital_root ($n) {
+    var $x = abs(int($n))
+    var $sum = 0
+    while ($x >= 10) {
+        $sum = 0
+        while ($x > 0) {
+            $sum += $x % 10
+            $x = int($x / 10)
+        }
+        $x = $sum
+    }
+    $x
+}
+
 # ── proportions ──────────────────────────────────────────────────────
 
 ## What percent $part is of $whole. pct_of(25, 200) → 12.5. Dies on a
