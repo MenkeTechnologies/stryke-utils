@@ -26,6 +26,15 @@ fn Utils::Num::floor_to_multiple ($x, $step) {
     floor($x / $step) * $step
 }
 
+## Round $x UP to the smallest multiple of $step not below it (toward
+## +infinity) — the third of the round/floor/ceil_to_multiple binning trio.
+## ceil_to_multiple(11, 5) → 15; ceil_to_multiple(-11, 5) → -10; an exact
+## multiple is returned unchanged.
+fn Utils::Num::ceil_to_multiple ($x, $step) {
+    die "Utils::Num::ceil_to_multiple: step != 0 required" if $step == 0
+    ceil($x / $step) * $step
+}
+
 # ── formatting ───────────────────────────────────────────────────────
 
 ## Ordinal suffix. ordinal(21) → "21st". Handles teens correctly.

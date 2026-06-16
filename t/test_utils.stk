@@ -178,6 +178,11 @@ assert_eq Utils::Num::floor_to_multiple(10, 5),    10, "floor_to_multiple keeps 
 assert_eq Utils::Num::floor_to_multiple(-3, 5),    -5, "floor_to_multiple goes toward -infinity"
 assert_dies fn { Utils::Num::floor_to_multiple(7, 0) }, "floor_to_multiple rejects a zero step"
 
+assert_eq Utils::Num::ceil_to_multiple(11, 5),    15, "ceil_to_multiple rounds up"
+assert_eq Utils::Num::ceil_to_multiple(10, 5),    10, "ceil_to_multiple keeps an exact multiple"
+assert_eq Utils::Num::ceil_to_multiple(-11, 5),  -10, "ceil_to_multiple goes toward +infinity"
+assert_dies fn { Utils::Num::ceil_to_multiple(7, 0) }, "ceil_to_multiple rejects a zero step"
+
 assert_eq Utils::Num::ordinal(1),  "1st",  "ordinal 1"
 assert_eq Utils::Num::ordinal(2),  "2nd",  "ordinal 2"
 assert_eq Utils::Num::ordinal(3),  "3rd",  "ordinal 3"
