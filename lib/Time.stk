@@ -184,3 +184,19 @@ fn Utils::Time::next_weekday ($epoch, $target) {
     }
     $e
 }
+
+## Epoch of the previous occurrence of weekday $target (0=Sun..6=Sat) strictly
+## before $epoch, stepping back in whole UTC days (time-of-day preserved) — the
+## mirror of next_weekday.
+fn Utils::Time::prev_weekday ($epoch, $target) {
+    die "Utils::Time::prev_weekday: target must be 0-6" if $target < 0 || $target > 6
+    var $e = int($epoch) - 86400
+    var $guard = 0
+    while ($guard < 8) {
+        val @g = gmtime($e)
+        return $e if $g[6] == $target
+        $e -= 86400
+        $guard++
+    }
+    $e
+}

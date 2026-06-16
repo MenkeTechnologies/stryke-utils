@@ -110,6 +110,14 @@ assert_eq Utils::Time::next_weekday(0, 4), 604800, "next_weekday: same weekday �
 # Next Friday (wday 5) after epoch 0 is +1 day.
 assert_eq Utils::Time::next_weekday(0, 5), 86400,  "next_weekday: tomorrow"
 
+# prev_weekday is the mirror: previous Thursday strictly before epoch 0 is -7 days.
+assert_eq Utils::Time::prev_weekday(0, 4), -604800, "prev_weekday: same weekday → -7 days"
+# Previous Wednesday (wday 3) before epoch 0 (Thu) is yesterday.
+assert_eq Utils::Time::prev_weekday(0, 3), -86400,  "prev_weekday: yesterday"
+# Previous Thursday before Jan 8 (also a Thursday) is Jan 1 = epoch 0.
+assert_eq Utils::Time::prev_weekday(604800, 4), 0,  "prev_weekday: strictly-before excludes the same instant"
+assert_dies fn { Utils::Time::prev_weekday(0, 7) }, "prev_weekday: rejects an out-of-range target"
+
 # ── Utils::Path ──────────────────────────────────────────────────────
 assert_eq Utils::Path::is_hidden("/a/.env"),  1, "is_hidden: dotfile"
 assert_eq Utils::Path::is_hidden("/a/b"),     0, "is_hidden: plain"
