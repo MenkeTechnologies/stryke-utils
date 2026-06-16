@@ -385,6 +385,18 @@ assert_eq Utils::Num::mean_abs_dev([5]),           0, "mean_abs_dev single"
 assert_eq Utils::Num::mean_abs_dev([2, 2, 2]),     0, "mean_abs_dev constant"
 assert_dies fn { Utils::Num::mean_abs_dev([]) },       "mean_abs_dev dies on empty"
 
+# Num::round_half_even — banker's rounding (half → nearest even).
+assert_eq Utils::Num::round_half_even(0.5),  0, "round_half_even 0.5 → 0 (even)"
+assert_eq Utils::Num::round_half_even(1.5),  2, "round_half_even 1.5 → 2 (even)"
+assert_eq Utils::Num::round_half_even(2.5),  2, "round_half_even 2.5 → 2 (even, not 3)"
+assert_eq Utils::Num::round_half_even(3.5),  4, "round_half_even 3.5 → 4 (even)"
+assert_eq Utils::Num::round_half_even(-2.5), -2, "round_half_even -2.5 → -2 (even)"
+assert_eq Utils::Num::round_half_even(2.4),  2, "round_half_even 2.4 → 2 (below half)"
+assert_eq Utils::Num::round_half_even(2.6),  3, "round_half_even 2.6 → 3 (above half)"
+assert_eq Utils::Num::round_half_even(2.675, 2), 2.68, "round_half_even 2.675,2 → 2.68"
+assert_eq Utils::Num::round_half_even(1.245, 2), 1.24, "round_half_even 1.245,2 → 1.24 (even)"
+assert_eq Utils::Num::round_half_even(12.5, -1), 10, "round_half_even 12.5,-1 → 10 (even tens)"
+
 # ── Utils::String (newlines, blank lines, quotes, fill) ──────────────
 assert_eq Utils::String::normalize_newlines("a\r\nb\rc\n"), "a\nb\nc\n", "normalize_newlines CRLF + CR"
 assert_eq Utils::String::normalize_newlines("plain"),       "plain",     "normalize_newlines no-op"

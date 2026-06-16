@@ -198,3 +198,26 @@ fn Utils::Num::gcd ($a, $b) {
     }
     $x
 }
+
+## Round $x to $digits decimal places (default 0) using round-half-to-even
+## ("banker's rounding") — the IEEE 754 / finance default. Unlike stryke's core
+## `round`, which rounds a half away from zero (2.5 → 3), this sends an exact half
+## to the nearest EVEN result (2.5 → 2, 3.5 → 4, -2.5 → -2), which avoids the
+## upward bias of repeatedly rounding halves. A value within ~1e-9 of a half is
+## treated as an exact half, so round_half_even(2.675, 2) → 2.68 and
+## round_half_even(1.245, 2) → 1.24.
+fn Utils::Num::round_half_even ($x, $digits = 0) {
+    val $scale = 10 ** $digits
+    val $y     = $x * $scale
+    val $f     = floor($y)
+    val $frac  = $y - $f
+    var $r
+    if (abs($frac - 0.5) < 1e-9) {
+        $r = ($f % 2 == 0) ? $f : $f + 1
+    } elsif ($frac < 0.5) {
+        $r = $f
+    } else {
+        $r = $f + 1
+    }
+    $r / $scale
+}
