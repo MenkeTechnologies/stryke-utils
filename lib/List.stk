@@ -63,6 +63,20 @@ fn Utils::List::symmetric_difference ($a, $b) {
     \@out
 }
 
+## True when $a and $b share no elements at all — their intersection is empty
+## (string equality). The disjointness predicate completing the set-ops family
+## alongside difference/intersection/union/symmetric_difference; stryke ships
+## is_subset/is_superset builtins but no disjoint test.
+##   is_disjoint([1,2,3], [4,5]) → 1 ; is_disjoint([1,2], [2,3]) → 0
+fn Utils::List::is_disjoint ($a, $b) {
+    var %has
+    $has{ defined($_) ? "$_" : "\0undef" }++ for @$b
+    for val $x (@$a) {
+        return 0 if $has{ defined($x) ? "$x" : "\0undef" }
+    }
+    1
+}
+
 # ── windowing ────────────────────────────────────────────────────────
 
 ## Sliding windows of length $size, step 1.

@@ -1,6 +1,6 @@
 [package]
 name = "stryke-utils"
-version = "0.13.0"
+version = "0.14.0"
 description = "Pure-stryke utility belt: String / List / Hash / Num / Time / Path helpers. No cdylib, no helper binary — just .stk modules loaded on `use Utils`."
 authors = ["MenkeTechnologies"]
 license = "MIT"
