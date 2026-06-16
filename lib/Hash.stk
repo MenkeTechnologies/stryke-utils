@@ -214,6 +214,17 @@ fn Utils::Hash::pick_by ($h, $pred) {
     \%out
 }
 
+## Drop (key, value) pairs for which $pred->($k, $v) is true — the inverse of
+## pick_by (keeps exactly the pairs pick_by would discard).
+##   omit_by({a => 1, b => 2}, fn ($k, $v) { $v > 1 }) → {a => 1}
+fn Utils::Hash::omit_by ($h, $pred) {
+    var %out
+    for val $k (keys %$h) {
+        $out{$k} = $h->{$k} unless $pred->($k, $h->{$k})
+    }
+    \%out
+}
+
 ## Shallow diff of two hashes by stringified value. Returns
 ## { changed => {k => [old, new]}, added => {k => v}, removed => {k => v} }.
 fn Utils::Hash::hash_diff ($a, $b) {

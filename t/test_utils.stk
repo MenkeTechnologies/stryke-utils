@@ -149,6 +149,17 @@ assert_ok !Utils::Hash::all_hashes({x=>{}, y=>"str"}),    "all_hashes no (scalar
 assert_ok !Utils::Hash::all_hashes({x=>{}, y=>[1,2]}),    "all_hashes no (array)"
 assert_ok  Utils::Hash::all_hashes({}),                   "all_hashes empty → yes"
 
+# omit_by: inverse of pick_by — drops pairs the predicate matches.
+val $ob = Utils::Hash::omit_by({a => 1, b => 2, c => 3}, fn ($k, $v) { $v > 1 })
+assert_eq $ob->{a}, 1,            "omit_by keeps the non-matching pair"
+assert_ok !exists $ob->{b},       "omit_by drops a matching pair"
+assert_ok !exists $ob->{c},       "omit_by drops every matching pair"
+# omit_by and pick_by partition the hash: their key sets are disjoint and complete.
+val $pb = Utils::Hash::pick_by({a => 1, b => 2, c => 3}, fn ($k, $v) { $v > 1 })
+val $partition_total = (scalar keys %$ob) + (scalar keys %$pb)
+assert_eq $partition_total, 3, "omit_by + pick_by partition all keys"
+assert_eq scalar keys %{ Utils::Hash::omit_by({a => 1}, fn ($k, $v) { 0 }) }, 1, "omit_by keeps all when predicate never matches"
+
 # ── Utils::Num ───────────────────────────────────────────────────────
 assert_eq Utils::Num::round_to_multiple(13, 5),    15, "round_to_multiple up"
 assert_eq Utils::Num::round_to_multiple(12, 5),    10, "round_to_multiple down"
