@@ -47,6 +47,15 @@ assert_eq $a2,   "",    "rpartition miss → empty before"
 assert_eq $sep2, "",    "rpartition miss → empty sep"
 assert_eq $b2,   "abc", "rpartition miss → whole into after"
 
+val ($pa, $psep, $pb) = Utils::String::partition("a/b/c", "/")
+assert_eq $pa,   "a",   "partition splits at FIRST sep → before"
+assert_eq $psep, "/",   "partition sep"
+assert_eq $pb,   "b/c", "partition after keeps the rest"
+val ($pa2, $psep2, $pb2) = Utils::String::partition("abc", "/")
+assert_eq $pa2,   "abc", "partition miss → whole into before"
+assert_eq $psep2, "",    "partition miss → empty sep"
+assert_eq $pb2,   "",    "partition miss → empty after"
+
 assert_eq Utils::String::mask_middle("4111222233334444", 4, 4), "4111********4444", "mask_middle card"
 assert_eq Utils::String::mask_middle("abcdef", 2, 2, "X"),      "abXXef",           "mask_middle custom ch"
 assert_eq Utils::String::mask_middle("ab", 2, 2),               "ab",               "mask_middle too short"

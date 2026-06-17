@@ -83,6 +83,15 @@ fn Utils::String::compact_whitespace ($s) {
 
 # ── partition (right) ────────────────────────────────────────────────
 
+## Split $s at the FIRST occurrence of $sep — the companion to rpartition.
+## Returns ($before, $sep, $after). Returns ($s, "", "") if $sep is absent
+## (the whole string lands in the first field, mirroring rpartition's last).
+fn Utils::String::partition ($s, $sep) {
+    val $i = index($s, $sep)
+    return ($s, "", "") if $i < 0
+    (substr($s, 0, $i), $sep, substr($s, $i + length($sep)))
+}
+
 ## Split $s at the LAST occurrence of $sep. Returns
 ## ($before, $sep, $after). Returns ("", "", $s) if $sep is absent.
 fn Utils::String::rpartition ($s, $sep) {
