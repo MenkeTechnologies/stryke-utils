@@ -220,6 +220,17 @@ fn Utils::Path::expand_user ($path) {
     $path =~ s{^~}{$home}r
 }
 
+## Contract a leading $HOME (from %ENV) to "~" — the inverse of expand_user, for
+## compact display. "$HOME" → "~", "$HOME/x" → "~/x"; a path not under $HOME (and
+## any path when $HOME is empty or "/") returns unchanged.
+fn Utils::Path::contract_user ($path) {
+    val $home = $ENV{HOME} // ""
+    return $path if $home eq "" || $home eq "/"
+    return "~" if $path eq $home
+    return "~" . substr($path, length($home)) if substr($path, 0, length($home) + 1) eq "$home/"
+    $path
+}
+
 ## Replace the final component of $path with $name (its sibling).
 ##   sibling("/a/b", "c") → "/a/c"
 fn Utils::Path::sibling ($path, $name) {
