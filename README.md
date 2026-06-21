@@ -104,7 +104,7 @@ Utils::List::windows([1,2,3,4], 2)              # [[1,2],[2,3],[3,4]]
 Utils::List::transpose([[1,2,3],[4,5,6]])       # [[1,4],[2,5],[3,6]]
 
 # Hashes — variadic merge + dot-path access
-my $cfg = Utils::Hash::deep_merge_all(
+val $cfg = Utils::Hash::deep_merge_all(
     $defaults, $from_env, $runtime)
 Utils::Hash::deep_get($cfg, "db.pool.max")      # nested read by dot path
 Utils::Hash::deep_set($cfg, "db.pool.min", 5)   # autovivifying write
