@@ -334,6 +334,20 @@ fn Utils::String::prefix_lines ($s, $prefix) {
     join("\n", map { "$prefix$_" } split(/\n/, $s, -1))
 }
 
+## The $n-th (1-based) line of $s, WITHOUT its trailing newline, or undef when
+## there are fewer than $n lines. Negative $n counts from the end (-1 is the last
+## line). Lines are split on "\n" after normalizing CRLF/CR, so the index is
+## consistent across platforms. A trailing newline does NOT create a phantom
+## empty final line. nth_line("a\nb\nc", 2) → "b"; nth_line("a\nb\n", -1) → "b".
+fn Utils::String::nth_line ($s, $n) {
+    var $t = Utils::String::normalize_newlines($s)
+    $t =~ s/\n$//
+    val @lines = split(/\n/, $t, -1)
+    val $i = $n < 0 ? scalar(@lines) + $n : $n - 1
+    return undef if $i < 0 || $i > $#lines
+    $lines[$i]
+}
+
 ## Count lines that contain at least one non-whitespace character — the
 ## "real content" line count. The final segment counts only when non-blank,
 ## so a trailing newline does not inflate the total. count_lines_nonblank("a\n\nb\n")

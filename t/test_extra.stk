@@ -219,4 +219,49 @@ assert_eq Utils::Path::with_parent("solo", "d"),        "d/solo",    "with_paren
 assert_eq Utils::Path::with_parent("a/b/c.txt", "x/"),  "x/c.txt",   "with_parent: trailing slash dropped"
 assert_eq Utils::Path::with_parent("a/b.txt", ""),      "b.txt",     "with_parent: empty dir → bare basename"
 
+# ── Utils::List (running_product, round_robin) ───────────────────────
+assert_eq join(",", @{ Utils::List::running_product([1,2,3,4]) }), "1,2,6,24", "running_product: prefix products"
+assert_eq join(",", @{ Utils::List::running_product([]) }),        "",         "running_product: empty"
+assert_eq join(",", @{ Utils::List::running_product([5]) }),       "5",        "running_product: single"
+assert_eq join(",", @{ Utils::List::running_product([2,0,5]) }),   "2,0,0",    "running_product: zero zeroes the tail"
+
+assert_eq join(",", @{ Utils::List::round_robin([1,2,3],[4,5],[6]) }), "1,4,6,2,5,3", "round_robin: ragged lists drain in index order"
+assert_eq join(",", @{ Utils::List::round_robin([1,2],[3,4]) }),       "1,3,2,4",     "round_robin: equal lengths interleave"
+assert_eq join(",", @{ Utils::List::round_robin([1,2,3]) }),           "1,2,3",       "round_robin: single list is identity"
+assert_eq join(",", @{ Utils::List::round_robin() }),                  "",            "round_robin: no lists → empty"
+
+# ── Utils::String (nth_line) ─────────────────────────────────────────
+assert_eq Utils::String::nth_line("a\nb\nc", 2),  "b", "nth_line: middle line"
+assert_eq Utils::String::nth_line("a\nb\nc", 1),  "a", "nth_line: first line"
+assert_eq Utils::String::nth_line("a\nb\n", -1),  "b", "nth_line: negative index from end, trailing newline ignored"
+assert_eq Utils::String::nth_line("a\r\nb", 2),   "b", "nth_line: CRLF normalized"
+assert_ok !defined(Utils::String::nth_line("a\nb", 5)), "nth_line: out of range → undef"
+assert_ok !defined(Utils::String::nth_line("a\nb", -9)), "nth_line: negative out of range → undef"
+
+# ── Utils::Hash (pluck_paths) ────────────────────────────────────────
+my $pp = Utils::Hash::pluck_paths({a => {b => 1, c => 2}, d => 3}, ["a.b", "d", "x.y"])
+assert_eq $pp->{"a.b"}, 1, "pluck_paths: nested path resolved"
+assert_eq $pp->{d},     3, "pluck_paths: shallow path resolved"
+assert_ok !defined($pp->{"x.y"}), "pluck_paths: missing path → undef"
+assert_eq scalar(keys %$pp), 3, "pluck_paths: one key per requested path"
+
+# ── Utils::Num (midrange) ────────────────────────────────────────────
+assert_eq Utils::Num::midrange([1,2,9]), 5,  "midrange: (min+max)/2"
+assert_eq Utils::Num::midrange([4]),     4,  "midrange: single value"
+assert_eq Utils::Num::midrange([-3, 3]), 0,  "midrange: symmetric range centers at 0"
+assert_dies fn { Utils::Num::midrange([]) }, "midrange: rejects empty input"
+
+# ── Utils::Time (truncate_to_hour) ───────────────────────────────────
+assert_eq Utils::Time::truncate_to_hour(3661), 3600, "truncate_to_hour: floors minutes/seconds"
+assert_eq Utils::Time::truncate_to_hour(7199), 3600, "truncate_to_hour: end of hour floors down"
+assert_eq Utils::Time::truncate_to_hour(3600), 3600, "truncate_to_hour: exact hour unchanged"
+assert_eq Utils::Time::truncate_to_hour(-1),  -3600, "truncate_to_hour: negative epoch floors earlier"
+
+# ── Utils::Path (strip_extension_all) ────────────────────────────────
+assert_eq Utils::Path::strip_extension_all("a/b.tar.gz"),       "a/b",        "strip_extension_all: drops every suffix"
+assert_eq Utils::Path::strip_extension_all("a/b.txt"),          "a/b",        "strip_extension_all: single extension"
+assert_eq Utils::Path::strip_extension_all("/x/archive.tar.gz"), "/x/archive", "strip_extension_all: absolute path"
+assert_eq Utils::Path::strip_extension_all("/a/.env"),          "/a/.env",    "strip_extension_all: dotfile kept whole"
+assert_eq Utils::Path::strip_extension_all("README"),           "README",     "strip_extension_all: no extension unchanged"
+
 test_run

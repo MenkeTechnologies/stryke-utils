@@ -272,6 +272,22 @@ fn Utils::Path::common_ancestor ($paths) {
 
 # ── predicates (relative) ────────────────────────────────────────────
 
+## Strip EVERY extension from the final component, keeping the directory — the
+## all-suffixes counterpart to `without_ext` (which drops only the last segment).
+## "a/b.tar.gz" → "a/b"; "a/b.txt" → "a/b". A leading-dot basename (".env") is
+## treated as having no extension and is returned unchanged, matching `is_hidden`
+## semantics. strip_extension_all("/x/archive.tar.gz") → "/x/archive".
+fn Utils::Path::strip_extension_all ($path) {
+    val $dir  = dirname($path)
+    val $base = basename($path)
+    # Keep a leading dot (dotfile), then cut at the first remaining dot.
+    val $lead = $base =~ /^\./ ? "." : ""
+    val $rest = $lead eq "" ? $base : substr($base, 1)
+    val $stem = $rest =~ s/\..*$//r
+    val $name = "$lead$stem"
+    $dir eq "." ? $name : ($dir eq "/" ? "/$name" : "$dir/$name")
+}
+
 ## True if $path is NOT absolute — the negation of `is_absolute`, supplied so
 ## both polarities read naturally at call sites. is_relative("a/b") → 1;
 ## is_relative("/a/b") → 0.

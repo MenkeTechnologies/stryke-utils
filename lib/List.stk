@@ -225,6 +225,43 @@ fn Utils::List::running_sum ($nums) {
     \@out
 }
 
+## Running (inclusive prefix) product: element $i is the product of items 0..$i.
+## The multiplicative companion to running_sum (which accumulates with +).
+## running_product([1,2,3,4]) → [1,2,6,24]; empty → []; a 0 anywhere zeroes
+## every later element.
+fn Utils::List::running_product ($nums) {
+    var @out
+    var $acc = 1
+    for val $x (@$nums) {
+        $acc *= $x
+        push @out, $acc
+    }
+    \@out
+}
+
+## Interleave N lists by index: take element 0 of every list, then element 1
+## of every list, and so on, skipping lists that have already been drained.
+## Unlike the binary `interleave` builtin this takes any number of lists (each
+## an arrayref) and tolerates RAGGED lengths — shorter lists simply contribute
+## nothing once exhausted, so the result preserves every element.
+##   round_robin([1,2,3],[4,5],[6]) → [1,4,6,2,5,3]
+fn Utils::List::round_robin (@lists) {
+    var @out
+    var $max = 0
+    for val $l (@lists) {
+        next unless defined($l)
+        val $n = scalar(@$l)
+        $max = $n if $n > $max
+    }
+    for var $i (0 .. $max - 1) {
+        for val $l (@lists) {
+            next unless defined($l)
+            push @out, $l->[$i] if $i < scalar(@$l)
+        }
+    }
+    \@out
+}
+
 ## Consecutive (adjacent) differences: element $i is $items[$i+1] - $items[$i].
 ## The discrete-derivative companion to running_sum (running_sum of deltas
 ## reconstructs the offsets). A list of N items yields N-1 deltas; 0 or 1 item

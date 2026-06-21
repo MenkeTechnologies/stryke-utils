@@ -289,6 +289,21 @@ fn Utils::Hash::to_query_string ($h) {
     } sort keys %$h)
 }
 
+## Project a set of dot-paths out of a nested hash into a flat result hash
+## keyed by the path string. Each path is resolved with `deep_get`, so a missing
+## or non-hash intermediate yields undef for that path. The multi-path read
+## companion to deep_get (one path) — handy for pulling a few deep config values
+## into one shallow record.
+##   pluck_paths({a => {b => 1, c => 2}, d => 3}, ["a.b", "d", "x.y"])
+##     → {"a.b" => 1, "d" => 3, "x.y" => undef}
+fn Utils::Hash::pluck_paths ($h, $paths) {
+    var %out
+    for val $p (@$paths) {
+        $out{$p} = Utils::Hash::deep_get($h, $p)
+    }
+    \%out
+}
+
 ## Percent-encode a string for a query component. Unreserved chars
 ## (A-Z a-z 0-9 - _ . ~) pass through; everything else becomes %XX (UTF-8
 ## bytes, uppercase hex).

@@ -273,6 +273,15 @@ fn Utils::Num::next_power_of_two ($n) {
 
 # ── factorization ────────────────────────────────────────────────────
 
+## Midrange: the arithmetic mean of the smallest and largest values, (min+max)/2.
+## A single-pass center-of-range statistic (the midpoint of the data's extent),
+## distinct from the `mean`/`median` builtins which weigh every value. Dies on an
+## empty list. midrange([1, 2, 9]) → 5; midrange([4]) → 4.
+fn Utils::Num::midrange ($nums) {
+    die "Utils::Num::midrange: empty input" unless scalar(@$nums)
+    (min(@$nums) + max(@$nums)) / 2
+}
+
 ## Sorted list of every positive divisor of |int($n)|, 1 and $n included.
 ## The full-divisor companion to the `gcd` builtin. divisors_of(12) →
 ## [1,2,3,4,6,12]; divisors_of(1) → [1]. Dies on 0 (infinite divisors).

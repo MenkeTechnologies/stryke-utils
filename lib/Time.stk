@@ -170,6 +170,19 @@ fn Utils::Time::is_same_day ($a, $b) {
     ($ga[5] == $gb[5] && $ga[4] == $gb[4] && $ga[3] == $gb[3]) ? 1 : 0
 }
 
+## Floor an epoch to the start of its UTC hour: drop the minute and second
+## components, keeping the date and hour. Operates purely on the integer epoch
+## (epoch mod 3600), so it is exact and DST-free. The hourly-bucketing companion
+## to the `start_of_day` builtin. truncate_to_hour(3661) → 3600 (01:00:00 UTC);
+## truncate_to_hour(7199) → 3600.
+fn Utils::Time::truncate_to_hour ($epoch = undef) {
+    $epoch //= time()
+    val $e = int($epoch)
+    # Floored mod so pre-1970 (negative) epochs floor toward the earlier hour.
+    val $r = (($e % 3600) + 3600) % 3600
+    $e - $r
+}
+
 ## Epoch of the next occurrence of weekday $target (0=Sun..6=Sat) strictly
 ## after $epoch, stepping in whole UTC days (time-of-day preserved).
 fn Utils::Time::next_weekday ($epoch, $target) {
