@@ -238,3 +238,56 @@ fn Utils::Num::round_half_even ($x, $digits = 0) {
     }
     $r / $scale
 }
+
+# ── bounds & moduli ──────────────────────────────────────────────────
+
+## Clamp $x into the closed range [$lo, $hi]. The arbitrary-range companion to
+## clamp01 (which is fixed to [0, 1]). Dies if $lo > $hi. clamp_to(12, 0, 10)
+## → 10; clamp_to(-3, 0, 10) → 0; clamp_to(5, 0, 10) → 5.
+fn Utils::Num::clamp_to ($x, $lo, $hi) {
+    die "Utils::Num::clamp_to: lo ($lo) must be <= hi ($hi)" if $lo > $hi
+    $x < $lo ? $lo : ($x > $hi ? $hi : $x)
+}
+
+## Floored modulo: the remainder of $x / $m that always carries the SIGN OF
+## THE DIVISOR $m, unlike the `%` operator (which follows the dividend). For
+## a positive $m the result is always in [0, $m), which is what cyclic indices
+## and clock arithmetic want. Dies on a zero modulus. mod_floor(-1, 3) → 2;
+## mod_floor(7, 3) → 1; mod_floor(-7, 3) → 2.
+fn Utils::Num::mod_floor ($x, $m) {
+    die "Utils::Num::mod_floor: modulus must be nonzero" if $m == 0
+    $x - $m * floor($x / $m)
+}
+
+# ── powers ───────────────────────────────────────────────────────────
+
+## Smallest power of two greater than or equal to $n (an integer >= 1).
+## next_power_of_two(1) → 1; next_power_of_two(17) → 32; next_power_of_two(64)
+## → 64. Dies on $n < 1. Useful for buffer/bucket sizing.
+fn Utils::Num::next_power_of_two ($n) {
+    die "Utils::Num::next_power_of_two: n must be >= 1" if $n < 1
+    var $p = 1
+    $p *= 2 while $p < $n
+    $p
+}
+
+# ── factorization ────────────────────────────────────────────────────
+
+## Sorted list of every positive divisor of |int($n)|, 1 and $n included.
+## The full-divisor companion to the `gcd` builtin. divisors_of(12) →
+## [1,2,3,4,6,12]; divisors_of(1) → [1]. Dies on 0 (infinite divisors).
+fn Utils::Num::divisors_of ($n) {
+    val $x = abs(int($n))
+    die "Utils::Num::divisors_of: zero has no finite divisor set" if $x == 0
+    var @small
+    var @large
+    var $i = 1
+    while ($i * $i <= $x) {
+        if ($x % $i == 0) {
+            push @small, $i
+            unshift @large, int($x / $i) if $i != int($x / $i)
+        }
+        $i++
+    }
+    [ @small, @large ]
+}

@@ -209,3 +209,69 @@ fn Utils::List::transpose ($rows) {
     }
     \@out
 }
+
+# ── running aggregates ───────────────────────────────────────────────
+
+## Running (inclusive prefix) sum: element $i is the sum of items 0..$i.
+## The scan/cumulative companion to the `sum` builtin (which returns one
+## total). running_sum([1,2,3,4]) → [1,3,6,10]; empty → [].
+fn Utils::List::running_sum ($nums) {
+    var @out
+    var $acc = 0
+    for val $x (@$nums) {
+        $acc += $x
+        push @out, $acc
+    }
+    \@out
+}
+
+## Consecutive (adjacent) differences: element $i is $items[$i+1] - $items[$i].
+## The discrete-derivative companion to running_sum (running_sum of deltas
+## reconstructs the offsets). A list of N items yields N-1 deltas; 0 or 1 item
+## yields []. deltas([1, 4, 9, 16]) → [3, 5, 7].
+fn Utils::List::deltas ($nums) {
+    val @src = @$nums
+    var @out
+    for var $i (1 .. $#src) {
+        push @out, $src[$i] - $src[$i - 1]
+    }
+    \@out
+}
+
+# ── rotation ─────────────────────────────────────────────────────────
+
+## Rotate the list left by $n positions: the first $n items move to the end.
+## $n is taken modulo the length, so any integer (including negative, which
+## rotates right) is valid; an empty list returns []. The cyclic-shift op,
+## distinct from the windowing/slicing builtins.
+##   rotate_left([1,2,3,4,5], 2) → [3,4,5,1,2]; rotate_left([1,2,3], -1) → [3,1,2]
+fn Utils::List::rotate_left ($items, $n) {
+    val @src = @$items
+    val $len = scalar(@src)
+    return [] unless $len
+    val $k = (($n % $len) + $len) % $len
+    return [ @src ] if $k == 0
+    [ @src[$k .. $len - 1], @src[0 .. $k - 1] ]
+}
+
+# ── argmax ───────────────────────────────────────────────────────────
+
+## Index of the maximum item (numeric compare by default; pass a $key fn for
+## a custom score). On ties the FIRST maximum wins. Returns -1 for an empty
+## list. The position-returning companion to the `max_by` builtin (which
+## returns the item). index_of_max([3, 9, 2, 9]) → 1.
+fn Utils::List::index_of_max ($items, $key) {
+    val @src = @$items
+    return -1 unless @src
+    val $sc = fn ($x) { defined($key) ? $key->($x) : $x }
+    var $best = 0
+    var $bv = $sc->($src[0])
+    for var $i (1 .. $#src) {
+        val $v = $sc->($src[$i])
+        if ($v > $bv) {
+            $bv = $v
+            $best = $i
+        }
+    }
+    $best
+}

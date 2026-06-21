@@ -304,3 +304,40 @@ fn Utils::String::remove_suffix ($s, $suffix) {
         ? substr($s, 0, length($s) - $n)
         : $s
 }
+
+# ── idempotent affixes ───────────────────────────────────────────────
+
+## Ensure $s begins with $prefix, adding it only when absent — the idempotent
+## counterpart to `remove_prefix`. ensure_prefix("file", "/") → "/file";
+## ensure_prefix("/file", "/") → "/file". Empty $prefix returns $s unchanged.
+fn Utils::String::ensure_prefix ($s, $prefix) {
+    return $s if length($prefix) == 0
+    index($s, $prefix) == 0 ? $s : "$prefix$s"
+}
+
+## Ensure $s ends with $suffix, adding it only when absent — the idempotent
+## counterpart to `remove_suffix`. ensure_suffix("page", "/") → "page/";
+## ensure_suffix("page/", "/") → "page/". Empty $suffix returns $s unchanged.
+fn Utils::String::ensure_suffix ($s, $suffix) {
+    val $n = length($suffix)
+    return $s if $n == 0
+    (length($s) >= $n && substr($s, length($s) - $n) eq $suffix) ? $s : "$s$suffix"
+}
+
+# ── line operations ──────────────────────────────────────────────────
+
+## Prepend $prefix to every line of $s (a per-line `indent` with an arbitrary
+## marker — comment prefixes, quote markers, diff signs). Newlines are kept
+## verbatim, including a trailing newline (which yields a final empty-line
+## prefix). prefix_lines("a\nb", "> ") → "> a\n> b".
+fn Utils::String::prefix_lines ($s, $prefix) {
+    join("\n", map { "$prefix$_" } split(/\n/, $s, -1))
+}
+
+## Count lines that contain at least one non-whitespace character — the
+## "real content" line count. The final segment counts only when non-blank,
+## so a trailing newline does not inflate the total. count_lines_nonblank("a\n\nb\n")
+## → 2; count_lines_nonblank("   \n\t") → 0.
+fn Utils::String::count_lines_nonblank ($s) {
+    scalar(grep { /\S/ } split(/\n/, $s, -1))
+}

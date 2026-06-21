@@ -135,4 +135,88 @@ assert_eq Utils::String::remove_prefix("xyz", "ab"),    "xyz",  "remove_prefix: 
 assert_eq Utils::String::remove_suffix("file.bak", ".bak"), "file", "remove_suffix: present"
 assert_eq Utils::String::remove_suffix("xyz", "ab"),        "xyz",  "remove_suffix: absent"
 
+# ── Utils::List (running aggregates, rotation, argmax) ────────────────
+assert_eq join(",", @{ Utils::List::running_sum([1,2,3,4]) }), "1,3,6,10", "running_sum: prefix sums"
+assert_eq join(",", @{ Utils::List::running_sum([]) }),        "",         "running_sum: empty"
+assert_eq join(",", @{ Utils::List::running_sum([5]) }),       "5",        "running_sum: single"
+
+assert_eq join(",", @{ Utils::List::deltas([1,4,9,16]) }),     "3,5,7",    "deltas: adjacent differences"
+assert_eq join(",", @{ Utils::List::deltas([10]) }),           "",         "deltas: single → empty"
+assert_eq join(",", @{ Utils::List::deltas([]) }),             "",         "deltas: empty → empty"
+# running_sum reconstructs offsets from deltas (off-by-first-element).
+my @off = (3, 8, 2, 11)
+my @dd  = @{ Utils::List::deltas(\@off) }
+assert_eq join(",", $off[0], map { $off[0] + $_ } @{ Utils::List::running_sum(\@dd) }), "3,8,2,11", "deltas/running_sum round-trip"
+
+assert_eq join(",", @{ Utils::List::rotate_left([1,2,3,4,5], 2) }), "3,4,5,1,2", "rotate_left: by 2"
+assert_eq join(",", @{ Utils::List::rotate_left([1,2,3], -1) }),    "3,1,2",     "rotate_left: negative rotates right"
+assert_eq join(",", @{ Utils::List::rotate_left([1,2,3], 3) }),     "1,2,3",     "rotate_left: full turn is identity"
+assert_eq join(",", @{ Utils::List::rotate_left([1,2,3], 5) }),     "3,1,2",     "rotate_left: n wraps modulo length"
+assert_eq join(",", @{ Utils::List::rotate_left([], 2) }),          "",          "rotate_left: empty"
+
+assert_eq Utils::List::index_of_max([3,9,2,9]),  1,  "index_of_max: first max on ties"
+assert_eq Utils::List::index_of_max([5]),        0,  "index_of_max: single"
+assert_eq Utils::List::index_of_max([]),        -1,  "index_of_max: empty → -1"
+assert_eq Utils::List::index_of_max([{n=>1},{n=>7},{n=>3}], fn ($x) { $x->{n} }), 1, "index_of_max: key fn"
+
+# ── Utils::Num (bounds, moduli, powers, factorization) ───────────────
+assert_eq Utils::Num::clamp_to(12, 0, 10),  10,  "clamp_to: above"
+assert_eq Utils::Num::clamp_to(-3, 0, 10),  0,   "clamp_to: below"
+assert_eq Utils::Num::clamp_to(5, 0, 10),   5,   "clamp_to: inside"
+assert_dies fn { Utils::Num::clamp_to(1, 10, 0) }, "clamp_to: rejects lo > hi"
+
+assert_eq Utils::Num::mod_floor(-1, 3),  2,  "mod_floor: negative dividend stays positive"
+assert_eq Utils::Num::mod_floor(7, 3),   1,  "mod_floor: positive matches %"
+assert_eq Utils::Num::mod_floor(-7, 3),  2,  "mod_floor: -7 mod 3"
+assert_dies fn { Utils::Num::mod_floor(1, 0) }, "mod_floor: rejects zero modulus"
+
+assert_eq Utils::Num::next_power_of_two(1),  1,  "next_power_of_two: 1"
+assert_eq Utils::Num::next_power_of_two(17), 32, "next_power_of_two: rounds up"
+assert_eq Utils::Num::next_power_of_two(64), 64, "next_power_of_two: exact power unchanged"
+assert_dies fn { Utils::Num::next_power_of_two(0) }, "next_power_of_two: rejects n < 1"
+
+assert_eq join(",", @{ Utils::Num::divisors_of(12) }), "1,2,3,4,6,12", "divisors_of: 12"
+assert_eq join(",", @{ Utils::Num::divisors_of(1) }),  "1",            "divisors_of: 1"
+assert_eq join(",", @{ Utils::Num::divisors_of(16) }), "1,2,4,8,16",   "divisors_of: perfect square has odd count"
+assert_dies fn { Utils::Num::divisors_of(0) }, "divisors_of: rejects 0"
+
+# ── Utils::String (affixes, line ops) ────────────────────────────────
+assert_eq Utils::String::ensure_prefix("file", "/"),  "/file", "ensure_prefix: adds when absent"
+assert_eq Utils::String::ensure_prefix("/file", "/"), "/file", "ensure_prefix: idempotent"
+assert_eq Utils::String::ensure_prefix("x", ""),      "x",     "ensure_prefix: empty prefix noop"
+
+assert_eq Utils::String::ensure_suffix("page", "/"),  "page/", "ensure_suffix: adds when absent"
+assert_eq Utils::String::ensure_suffix("page/", "/"), "page/", "ensure_suffix: idempotent"
+assert_eq Utils::String::ensure_suffix("x", ""),      "x",     "ensure_suffix: empty suffix noop"
+
+assert_eq Utils::String::prefix_lines("a\nb", "> "),  "> a\n> b", "prefix_lines: marks each line"
+assert_eq Utils::String::prefix_lines("solo", "# "),  "# solo",   "prefix_lines: single line"
+
+assert_eq Utils::String::count_lines_nonblank("a\n\nb\n"), 2, "count_lines_nonblank: skips blank + trailing"
+assert_eq Utils::String::count_lines_nonblank("   \n\t"),  0, "count_lines_nonblank: all whitespace → 0"
+assert_eq Utils::String::count_lines_nonblank("one"),      1, "count_lines_nonblank: no newline"
+
+# ── Utils::Hash (inversion, nested count, query string) ──────────────
+my $im = Utils::Hash::invert_multi({a => 1, b => 1, c => 2})
+assert_eq join(",", @{ $im->{1} }), "a,b", "invert_multi: collects keys per value"
+assert_eq join(",", @{ $im->{2} }), "c",   "invert_multi: singleton value"
+
+assert_eq Utils::Hash::deep_count({a => {b => 1, c => 2}, d => 3}), 3, "deep_count: leaves at any depth"
+assert_eq Utils::Hash::deep_count({}),                              0, "deep_count: empty"
+assert_eq Utils::Hash::deep_count({a => 1}),                        1, "deep_count: flat"
+
+assert_eq Utils::Hash::to_query_string({b => 2, a => "x y"}), "a=x%20y&b=2", "to_query_string: sorted + encoded"
+assert_eq Utils::Hash::to_query_string({}),                   "",            "to_query_string: empty"
+assert_eq Utils::Hash::to_query_string({k => undef}),         "k=",          "to_query_string: undef → empty value"
+
+# ── Utils::Path (is_relative, with_parent) ───────────────────────────
+assert_eq Utils::Path::is_relative("a/b"),  1, "is_relative: relative"
+assert_eq Utils::Path::is_relative("/a/b"), 0, "is_relative: absolute"
+assert_eq Utils::Path::is_relative("/a/b") + Utils::Path::is_absolute("/a/b"), 1, "is_relative is the negation of is_absolute"
+
+assert_eq Utils::Path::with_parent("a/b/c.txt", "x/y"), "x/y/c.txt", "with_parent: swaps dir, keeps basename"
+assert_eq Utils::Path::with_parent("solo", "d"),        "d/solo",    "with_parent: bare name gets dir"
+assert_eq Utils::Path::with_parent("a/b/c.txt", "x/"),  "x/c.txt",   "with_parent: trailing slash dropped"
+assert_eq Utils::Path::with_parent("a/b.txt", ""),      "b.txt",     "with_parent: empty dir → bare basename"
+
 test_run

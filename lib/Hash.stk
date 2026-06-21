@@ -248,3 +248,50 @@ fn Utils::Hash::hash_diff ($a, $b) {
 fn Utils::Hash::_vstr ($v) {
     defined($v) ? "$v" : "\0undef"
 }
+
+# ── inversion (many-to-one) ──────────────────────────────────────────
+
+## Invert a hash whose values are NOT unique: each distinct (stringified)
+## value maps to a SORTED arrayref of the keys that held it. Unlike the core
+## `invert` builtin (one key per value, last-writer-wins), this preserves
+## every key. invert_multi({a => 1, b => 1, c => 2}) → {1 => ["a","b"], 2 => ["c"]}.
+fn Utils::Hash::invert_multi ($h) {
+    var %out
+    for val $k (keys %$h) {
+        val $v = Utils::Hash::_vstr($h->{$k})
+        push @{ $out{$v} }, $k
+    }
+    $out{$_} = [ sort @{ $out{$_} } ] for keys %out
+    \%out
+}
+
+# ── nested shape ─────────────────────────────────────────────────────
+
+## Count the leaf values in a nested hash — every non-hash value plus every
+## empty-hash leaf, at any depth (the size of `flatten_keys`). The recursive
+## companion to the `scalar keys` shallow count. deep_count({a => {b => 1, c => 2}, d => 3})
+## → 3; deep_count({}) → 0.
+fn Utils::Hash::deep_count ($h) {
+    scalar keys %{ Utils::Hash::flatten_keys($h) }
+}
+
+# ── serialization ────────────────────────────────────────────────────
+
+## Render a flat hash as a URL query string with keys sorted for a stable,
+## reproducible result. Both key and value are percent-encoded (RFC-3986
+## unreserved set kept literal; space → "%20"). undef values become an empty
+## value. to_query_string({b => 2, a => "x y"}) → "a=x%20y&b=2".
+fn Utils::Hash::to_query_string ($h) {
+    join("&", map {
+        val $k = Utils::Hash::_urlenc("$_");
+        val $v = Utils::Hash::_urlenc(defined($h->{$_}) ? "$h->{$_}" : "");
+        "$k=$v"
+    } sort keys %$h)
+}
+
+## Percent-encode a string for a query component. Unreserved chars
+## (A-Z a-z 0-9 - _ . ~) pass through; everything else becomes %XX (UTF-8
+## bytes, uppercase hex).
+fn Utils::Hash::_urlenc ($s) {
+    $s =~ s/([^A-Za-z0-9\-_.~])/sprintf("%%%02X", ord($1))/ger
+}

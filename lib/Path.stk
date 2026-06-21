@@ -269,3 +269,24 @@ fn Utils::Path::common_ancestor ($paths) {
     val $joined = join("/", @common)
     $abs ? "/$joined" : $joined
 }
+
+# ── predicates (relative) ────────────────────────────────────────────
+
+## True if $path is NOT absolute — the negation of `is_absolute`, supplied so
+## both polarities read naturally at call sites. is_relative("a/b") → 1;
+## is_relative("/a/b") → 0.
+fn Utils::Path::is_relative ($path) {
+    substr($path, 0, 1) eq "/" ? 0 : 1
+}
+
+# ── directory surgery ────────────────────────────────────────────────
+
+## Replace the directory of $path with $dir, keeping the final component
+## (basename) unchanged — the dirname-side counterpart to `with_name`. A
+## trailing slash on $dir is dropped; an empty $dir yields the bare basename.
+##   with_parent("a/b/c.txt", "x/y") → "x/y/c.txt"; with_parent("solo", "d") → "d/solo"
+fn Utils::Path::with_parent ($path, $dir) {
+    val $name = basename($path)
+    val $d = $dir =~ s{/+$}{}r
+    $d eq "" ? $name : "$d/$name"
+}
