@@ -245,6 +245,7 @@ stryke-utils/
     utils.stk                  # CLI front-end
   t/
     test_utils.stk             # all-surface assertions
+    test_extra.stk             # assertions for the later sublib additions
   examples/
     discover.stk               # one call per sublib
     word_frequency.stk         # builtin-powered text pipeline
