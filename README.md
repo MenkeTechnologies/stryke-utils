@@ -14,7 +14,7 @@
 
 ### `[BOUNDARY HELPERS // EVERYTHING ELSE IS A STRYKE BUILTIN]`
 
-> *"149 composites the language doesn't already ship. Cross-checked against `%b` — zero overlap."*
+> *"149 composites the language doesn't already ship."*
 
 `stryke-utils` is a small pure-stryke utility library: six sublibraries (`String`, `List`, `Hash`, `Num`, `Time`, `Path`) of higher-level composites that aren't already in stryke core. No `[ffi]` table, no cdylib, no helper binary — just `.stk` modules loaded on `use Utils`. Created by MenkeTechnologies.
 
@@ -41,7 +41,7 @@
 ## [0x00] Why a Package, Not Core
 
 stryke core absorbed most of the obvious composites — `slugify`,
-`snake_case`, `truncate`, `levenshtein`, `chunk`, `uniq`, `group_by`,
+`snake_case`, `truncate`, `levenshtein`, `flatten`, `uniq`, `group_by`,
 `deep_merge`, `pick`, `omit`, `clamp`, `format_bytes`, `format_duration`,
 `now_ms`, `basename`, `common_prefix`, and roughly seventy more landed
 in `%b`. This package shrunk in response. What's left here is the long
@@ -50,13 +50,12 @@ inclusion.
 
 | Tier | Properties | Examples |
 |---|---|---|
-| stryke core (`%b`, 10k+ entries) | builtins everyone needs everywhere | `length`, `keys`, `uc`, `sort`, `time`, `sprintf`, `slugify`, `chunk`, `deep_merge`, `format_bytes`, `levenshtein`, `basename`, … |
+| stryke core (`%b`, 10k+ entries) | builtins everyone needs everywhere | `length`, `keys`, `uc`, `sort`, `time`, `sprintf`, `slugify`, `flatten`, `deep_merge`, `format_bytes`, `levenshtein`, `basename`, … |
 | `stryke-utils` (opt-in, 149 fns) | path-aware variants, n-ary wrappers, regex composites, the long tail | `deep_merge_all`, `parse_duration`, `compound_ext`, `round_to_multiple`, `pad_center`, `escape_shell`, `mask_middle`, `unwrap`, `windows`, `difference`/`intersection`/`union` |
 
-Every function in this repo is cross-checked against `%b` at build time
-— zero name collisions with builtins. The two exceptions, `Utils::Path::join`
-and `Utils::Path::normalize`, are intentionally distinct: stryke's `join`
-is the array builtin and stryke's `normalize` is a vector op.
+Ten names are also present in `%b`: `partition`, `ensure_prefix`, `ensure_suffix`,
+`chunk`, `transpose`, `digital_root`, `remap`, `gcd`, `join`, `normalize`. Call
+them qualified (`Utils::<Module>::<name>`) to get this library's version.
 
 ## [0x01] Install
 
@@ -129,7 +128,7 @@ Utils::Path::relative("/a/x", "/a/b/c")         # "../../x"
 Utils::Path::join("/a", "b/", "/c")             # "/a/b/c"
 ```
 
-For everything else — `slugify`, `chunk`, `uniq`, `deep_merge`,
+For everything else — `slugify`, `flatten`, `uniq`, `deep_merge`,
 `format_bytes`, `levenshtein`, `basename`, … — just call the stryke
 builtin directly. No wrapper indirection.
 
@@ -201,7 +200,7 @@ s bin/utils.stk relative /a/x /a/b/c           # ../../x
 s bin/utils.stk help
 ```
 
-For builtins (`slugify`, `chunk`, `deep_merge`, `format_bytes`, …), call
+For builtins (`slugify`, `flatten`, `deep_merge`, `format_bytes`, …), call
 stryke one-liner-style — no wrapper needed:
 
 ```sh
